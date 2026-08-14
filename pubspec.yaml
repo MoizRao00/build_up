@@ -42,6 +42,10 @@ dependencies:
   permission_handler:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
+  firebase_auth: ^5.0.0
+  flutter_map: ^8.3.1
+  latlong2: ^0.10.1
+  geolocator: ^14.0.3
 
 
 dev_dependencies:
@@ -91,3 +95,5 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+dependency_overrides:
+  permission_handler_android: 13.0.1

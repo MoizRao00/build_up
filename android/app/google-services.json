@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "348703955298",
+    "project_id": "buildup-2b927",
+    "storage_bucket": "buildup-2b927.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:348703955298:android:61be378895e9c3148cf43b",
+        "android_client_info": {
+          "package_name": "com.example.build_up"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCilRrrdQQurTQJhXP1pKu9se_kch-oesY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

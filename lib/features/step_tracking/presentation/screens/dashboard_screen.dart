@@ -2,15 +2,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../providers/step_provider.dart';
+import '../providers/active_duration_provider.dart';
 import '../widgets/glass_step_card.dart';
 import '../widgets/metric_glass_card.dart';
+import '../widgets/rest_mode_card.dart';
 
-class DashboardView extends ConsumerWidget {
+class DashboardView extends ConsumerStatefulWidget {
   const DashboardView({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardView> createState() => _DashboardViewState();
+}
+
+class _DashboardViewState extends ConsumerState<DashboardView> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref.read(stepNotifierProvider.notifier).initializeTracking();
+      ref.read(activeDurationProvider.notifier).startTracking();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final stepState = ref.watch(stepNotifierProvider);
+    final durationState = ref.watch(activeDurationProvider);
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -43,7 +60,8 @@ class DashboardView extends ConsumerWidget {
                   ],
                 ),
                 GlassCard(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   child: Row(
                     children: const [
                       Icon(Icons.bolt, color: AppColors.primaryEmerald, size: 18),
@@ -60,7 +78,9 @@ class DashboardView extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+            const RestModeCard(),
+            const SizedBox(height: 16),
             GlassCard(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -81,10 +101,14 @@ class DashboardView extends ConsumerWidget {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
                     child: LinearProgressIndicator(
-                      value: stepState.currentSteps / stepState.goalSteps,
+                      value: stepState.goalSteps > 0
+                          ? (stepState.currentSteps / stepState.goalSteps)
+                          .clamp(0.0, 1.0)
+                          : 0.0,
                       minHeight: 12,
                       backgroundColor: AppColors.glassCardBackground,
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryEmerald),
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                          AppColors.primaryEmerald),
                     ),
                   ),
                 ],
@@ -111,6 +135,13 @@ class DashboardView extends ConsumerWidget {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            MetricGlassCard(
+              label: 'Active Duration',
+              value: durationState.formattedDuration,
+              unit: '',
+              icon: Icons.timer,
             ),
           ],
         ),
