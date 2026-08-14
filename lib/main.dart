@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app.dart';
 import 'core/services/local_storage_service.dart';
+import 'core/services/widget_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,6 +11,9 @@ void main() async {
 
   final storage = LocalStorageService();
   await storage.init();
+
+  final widgetService = WidgetService();
+  await widgetService.init();
 
   runApp(
     const ProviderScope(

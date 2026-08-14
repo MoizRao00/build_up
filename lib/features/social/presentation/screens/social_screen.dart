@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../step_tracking/presentation/widgets/glass_step_card.dart';
+import '../providers/leaderboard_provider.dart';
 
-class SocialScreen extends StatelessWidget {
+class SocialScreen extends ConsumerWidget {
   const SocialScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final leaderboardAsyncValue = ref.watch(leaderboardStreamProvider);
+
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -24,21 +28,42 @@ class SocialScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Expanded(
-              child: ListView.separated(
-                itemCount: 10,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final rank = index + 1;
-                  final isCurrentUser = rank == 4;
-                  final steps = 12000 - (index * 850);
+              child: leaderboardAsyncValue.when(
+                data: (users) {
+                  if (users.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No users found.',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                    );
+                  }
 
-                  return LeaderboardUserCard(
-                    rank: rank,
-                    name: isCurrentUser ? 'You' : 'User $rank',
-                    steps: steps,
-                    isCurrentUser: isCurrentUser,
+                  return ListView.separated(
+                    itemCount: users.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final user = users[index];
+                      final rank = index + 1;
+
+                      return LeaderboardUserCard(
+                        rank: rank,
+                        name: user.displayName,
+                        steps: user.totalSteps,
+                        isCurrentUser: false,
+                      );
+                    },
                   );
                 },
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: AppColors.primaryEmerald),
+                ),
+                error: (error, stackTrace) => Center(
+                  child: Text(
+                    'Error loading leaderboard.',
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                ),
               ),
             ),
           ],

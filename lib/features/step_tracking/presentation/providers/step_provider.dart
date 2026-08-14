@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/pedometer_service.dart';
 import '../../../../core/services/local_storage_service.dart';
+import '../../../../core/services/widget_service.dart';
 
 class StepState {
   final int currentSteps;
@@ -46,6 +47,10 @@ final pedometerServiceProvider = Provider<PedometerService>((ref) {
   return PedometerService();
 });
 
+final widgetServiceProvider = Provider<WidgetService>((ref) {
+  return WidgetService();
+});
+
 final stepNotifierProvider = NotifierProvider<StepNotifier, StepState>(StepNotifier.new);
 
 class StepNotifier extends Notifier<StepState> {
@@ -66,6 +71,9 @@ class StepNotifier extends Notifier<StepState> {
   void initializeTracking() {
     final service = ref.read(pedometerServiceProvider);
     final storage = ref.read(storageProvider);
+    final widgetService = ref.read(widgetServiceProvider);
+
+    widgetService.init();
 
     service.startTracking(
       onStepCount: (steps) {
@@ -76,6 +84,7 @@ class StepNotifier extends Notifier<StepState> {
           distanceKm: steps * 0.00075,
         );
         storage.saveSteps(steps);
+        widgetService.updateWidgetData(steps, state.goalSteps);
       },
       onStatusChanged: (status) {
         state = state.copyWith(pedestrianStatus: status);

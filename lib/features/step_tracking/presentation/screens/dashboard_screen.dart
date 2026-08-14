@@ -6,6 +6,7 @@ import '../providers/active_duration_provider.dart';
 import '../widgets/glass_step_card.dart';
 import '../widgets/metric_glass_card.dart';
 import '../widgets/rest_mode_card.dart';
+import '../../../gamification/presentation/widgets/daily_quote_card.dart';
 
 class DashboardView extends ConsumerStatefulWidget {
   const DashboardView({super.key});
@@ -45,7 +46,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                       'BUILD UP',
                       style: TextStyle(
                         fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
                         letterSpacing: 1.2,
                       ),
@@ -70,7 +71,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                         '120 Coins',
                         style: TextStyle(
                           color: AppColors.textPrimary,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
@@ -89,7 +90,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                     '${stepState.currentSteps}',
                     style: const TextStyle(
                       fontSize: 48,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     ),
                   ),
@@ -143,6 +144,9 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
               unit: '',
               icon: Icons.timer,
             ),
+            const SizedBox(height: 16),
+            const DailyQuoteSwiper(),
+            const SizedBox(height: 20),
           ],
         ),
       ),

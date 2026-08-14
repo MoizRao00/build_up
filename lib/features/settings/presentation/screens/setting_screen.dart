@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../step_tracking/presentation/providers/step_provider.dart';
+import '../../../../core/utils/export_service.dart';
 import '../../../step_tracking/presentation/widgets/glass_step_card.dart';
+import 'scheduler_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final stepState = ref.watch(stepNotifierProvider);
+    final exportService = ExportService();
+
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -38,9 +45,41 @@ class SettingsScreen extends StatelessWidget {
                   ),
                   const Divider(color: AppColors.glassCardBorder),
                   ListTile(
-                    leading: const Icon(Icons.download, color: AppColors.primaryEmerald),
-                    title: const Text('Export Data (PDF/CSV)', style: TextStyle(color: AppColors.textPrimary)),
-                    onTap: () {},
+                    leading: const Icon(Icons.timer, color: AppColors.primaryEmerald),
+                    title: const Text('Daily Walk Scheduler', style: TextStyle(color: AppColors.textPrimary)),
+                    trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const WalkSchedulerScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const Divider(color: AppColors.glassCardBorder),
+                  ListTile(
+                    leading: const Icon(Icons.picture_as_pdf, color: AppColors.primaryEmerald),
+                    title: const Text('Export PDF Report', style: TextStyle(color: AppColors.textPrimary)),
+                    onTap: () {
+                      exportService.exportToPdf(
+                        stepState.currentSteps,
+                        stepState.calories,
+                        stepState.distanceKm,
+                      );
+                    },
+                  ),
+                  const Divider(color: AppColors.glassCardBorder),
+                  ListTile(
+                    leading: const Icon(Icons.table_chart, color: AppColors.primaryEmerald),
+                    title: const Text('Export CSV Data', style: TextStyle(color: AppColors.textPrimary)),
+                    onTap: () {
+                      exportService.exportToCsv(
+                        stepState.currentSteps,
+                        stepState.calories,
+                        stepState.distanceKm,
+                      );
+                    },
                   ),
                 ],
               ),
