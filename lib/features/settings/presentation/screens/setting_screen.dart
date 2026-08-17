@@ -4,6 +4,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../step_tracking/presentation/providers/step_provider.dart';
 import '../../../../core/utils/export_service.dart';
 import '../../../step_tracking/presentation/widgets/glass_step_card.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import 'scheduler_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -13,6 +14,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final stepState = ref.watch(stepNotifierProvider);
     final exportService = ExportService();
+    final authController = ref.watch(authControllerProvider);
 
     return SafeArea(
       child: Padding(
@@ -82,6 +84,26 @@ class SettingsScreen extends ConsumerWidget {
                     },
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'ACCOUNT',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            GlassCard(
+              padding: const EdgeInsets.all(16),
+              child: ListTile(
+                leading: const Icon(Icons.logout, color: Colors.orangeAccent),
+                title: const Text('Sign Out', style: TextStyle(color: AppColors.textPrimary)),
+                onTap: () async {
+                  await authController.signOut();
+                },
               ),
             ),
             const SizedBox(height: 24),

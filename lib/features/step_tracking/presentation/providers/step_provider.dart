@@ -1,4 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../../core/services/pedometer_service.dart';
 import '../../../../core/services/local_storage_service.dart';
 import '../../../../core/services/widget_service.dart';
@@ -67,32 +70,51 @@ class StepNotifier extends Notifier<StepState> {
       isRestMode: false,
     );
   }
+  Future<void> initializeTracking() async {
+    final permissionStatus = await Permission.activityRecognition.request();
 
-  void initializeTracking() {
-    final service = ref.read(pedometerServiceProvider);
-    final storage = ref.read(storageProvider);
-    final widgetService = ref.read(widgetServiceProvider);
+    if (permissionStatus.isGranted) {
+      final service = ref.read(pedometerServiceProvider);
+      final storage = ref.read(storageProvider);
+      final widgetService = ref.read(widgetServiceProvider);
 
-    widgetService.init();
+      widgetService.init();
 
-    service.startTracking(
-      onStepCount: (steps) {
-        if (state.isRestMode) return;
-        state = state.copyWith(
-          currentSteps: steps,
-          calories: steps * 0.04,
-          distanceKm: steps * 0.00075,
-        );
-        storage.saveSteps(steps);
-        widgetService.updateWidgetData(steps, state.goalSteps);
-      },
-      onStatusChanged: (status) {
-        state = state.copyWith(pedestrianStatus: status);
-      },
-      onError: (error) {
-        state = state.copyWith(pedestrianStatus: 'error');
-      },
-    );
+      service.startTracking(
+        onStepCount: (steps) {
+          if (state.isRestMode) return;
+          state = state.copyWith(
+            currentSteps: steps,
+            calories: steps * 0.04,
+            distanceKm: steps * 0.00075,
+          );
+
+          storage.saveSteps(steps);
+          widgetService.updateWidgetData(steps, state.goalSteps);
+
+          if (steps % 10 == 0) {
+            _syncStepsToFirestore(steps);
+          }
+        },
+        onStatusChanged: (status) {
+          state = state.copyWith(pedestrianStatus: status);
+        },
+        onError: (error) {
+          state = state.copyWith(pedestrianStatus: 'error');
+        },
+      );
+    } else {
+      state = state.copyWith(pedestrianStatus: 'Permission Denied');
+    }
+  }
+
+  void _syncStepsToFirestore(int steps) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'totalSteps': steps,
+      }).catchError((_) {});
+    }
   }
 
   void toggleRestMode() {

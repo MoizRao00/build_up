@@ -7,6 +7,7 @@ import '../widgets/glass_step_card.dart';
 import '../widgets/metric_glass_card.dart';
 import '../widgets/rest_mode_card.dart';
 import '../../../gamification/presentation/widgets/daily_quote_card.dart';
+import 'gps_tracking_screen.dart';
 
 class DashboardView extends ConsumerStatefulWidget {
   const DashboardView({super.key});
@@ -30,125 +31,148 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
     final stepState = ref.watch(stepNotifierProvider);
     final durationState = ref.watch(activeDurationProvider);
 
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'BUILD UP',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    Text(
-                      'Daily Movement',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                GlassCard(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Row(
-                    children: const [
-                      Icon(Icons.bolt, color: AppColors.primaryEmerald, size: 18),
-                      SizedBox(width: 4),
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        '120 Coins',
+                        'BUILD UP',
                         style: TextStyle(
-                          color: AppColors.textPrimary,
+                          fontSize: 24,
                           fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      Text(
+                        'Daily Movement',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            const RestModeCard(),
-            const SizedBox(height: 16),
-            GlassCard(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  Text(
-                    '${stepState.currentSteps}',
-                    style: const TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    'Target: ${stepState.goalSteps} steps',
-                    style: const TextStyle(color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: 20),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: LinearProgressIndicator(
-                      value: stepState.goalSteps > 0
-                          ? (stepState.currentSteps / stepState.goalSteps)
-                          .clamp(0.0, 1.0)
-                          : 0.0,
-                      minHeight: 12,
-                      backgroundColor: AppColors.glassCardBackground,
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                          AppColors.primaryEmerald),
+                  GlassCard(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.bolt,
+                            color: AppColors.primaryEmerald, size: 18),
+                        SizedBox(width: 4),
+                        Text(
+                          '120 Coins',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: MetricGlassCard(
-                    label: 'Calories',
-                    value: stepState.calories.toStringAsFixed(1),
-                    unit: 'kcal',
-                    icon: Icons.local_fire_department,
-                  ),
+              const SizedBox(height: 20),
+              const RestModeCard(),
+              const SizedBox(height: 16),
+              GlassCard(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    Text(
+                      '${stepState.currentSteps}',
+                      style: const TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      'Target: ${stepState.goalSteps} steps',
+                      style: const TextStyle(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 20),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: stepState.goalSteps > 0
+                            ? (stepState.currentSteps / stepState.goalSteps)
+                                .clamp(0.0, 1.0)
+                            : 0.0,
+                        minHeight: 12,
+                        backgroundColor: AppColors.glassCardBackground,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.primaryEmerald),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: MetricGlassCard(
-                    label: 'Distance',
-                    value: stepState.distanceKm.toStringAsFixed(1),
-                    unit: 'km',
-                    icon: Icons.map,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: MetricGlassCard(
+                      label: 'Calories',
+                      value: stepState.calories.toStringAsFixed(1),
+                      unit: 'kcal',
+                      icon: Icons.local_fire_department,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            MetricGlassCard(
-              label: 'Active Duration',
-              value: durationState.formattedDuration,
-              unit: '',
-              icon: Icons.timer,
-            ),
-            const SizedBox(height: 16),
-            const DailyQuoteSwiper(),
-            const SizedBox(height: 20),
-          ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const GpsTrackingScreen()),
+                        );
+                      },
+                      child: MetricGlassCard(
+                        label: 'Distance',
+                        value: stepState.distanceKm.toStringAsFixed(1),
+                        unit: 'km',
+                        icon: Icons.map,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              MetricGlassCard(
+                label: 'Active Duration',
+                value: durationState.formattedDuration,
+                unit: '',
+                icon: Icons.timer,
+              ),
+              const SizedBox(height: 16),
+              const DailyQuoteSwiper(),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const GpsTrackingScreen()),
+          );
+        },
+        backgroundColor: AppColors.primaryEmerald,
+        child: const Icon(Icons.location_on, color: Colors.white),
       ),
     );
   }
