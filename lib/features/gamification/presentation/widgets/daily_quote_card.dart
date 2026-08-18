@@ -19,7 +19,10 @@ class DailyQuoteSwiper extends ConsumerWidget {
         itemBuilder: (context, index) {
           final quote = quotes[index];
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            padding: EdgeInsets.only(
+              left: index == 0 ? 0 : 8.0,
+              right: index == quotes.length - 1 ? 0 : 8.0,
+            ),
             child: GlassCard(
               padding: const EdgeInsets.all(20),
               child: Column(

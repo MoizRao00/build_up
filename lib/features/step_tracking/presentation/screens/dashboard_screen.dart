@@ -1,3 +1,4 @@
+import 'package:build_up/features/step_tracking/presentation/screens/route_history_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_colors.dart';
@@ -65,7 +66,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                   ),
                   GlassCard(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     child: Row(
                       children: const [
                         Icon(Icons.bolt,
@@ -87,7 +88,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
               const RestModeCard(),
               const SizedBox(height: 16),
               GlassCard(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
                     Text(
@@ -108,7 +109,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                       child: LinearProgressIndicator(
                         value: stepState.goalSteps > 0
                             ? (stepState.currentSteps / stepState.goalSteps)
-                                .clamp(0.0, 1.0)
+                            .clamp(0.0, 1.0)
                             : 0.0,
                         minHeight: 12,
                         backgroundColor: AppColors.glassCardBackground,
@@ -130,36 +131,103 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                       icon: Icons.local_fire_department,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const GpsTrackingScreen()),
-                        );
-                      },
-                      child: MetricGlassCard(
-                        label: 'Distance',
-                        value: stepState.distanceKm.toStringAsFixed(1),
-                        unit: 'km',
-                        icon: Icons.map,
-                      ),
+                    child: MetricGlassCard(
+                      label: 'Distance',
+                      value: stepState.distanceKm.toStringAsFixed(1),
+                      unit: 'km',
+                      icon: Icons.map,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              MetricGlassCard(
-                label: 'Active Duration',
-                value: durationState.formattedDuration,
-                unit: '',
-                icon: Icons.timer,
+              const SizedBox(height: 16),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: MetricGlassCard(
+                      label: 'Active Time',
+                      value: stepState.activeDuration,
+                      unit: '',
+                      icon: Icons.timer,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: MetricGlassCard(
+                      label: 'Goal Progress',
+                      value: stepState.goalSteps > 0
+                          ? ((stepState.currentSteps / stepState.goalSteps) * 100)
+                          .clamp(0, 100)
+                          .toStringAsFixed(0)
+                          : '0',
+                      unit: '%',
+                      icon: Icons.flag,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const RouteHistoryScreen()),
+                  );
+                },
+                child: GlassCard(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryEmerald.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.history,
+                          color: AppColors.primaryEmerald,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Workout History',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'View past routes and records',
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right,
+                        color: Colors.white54,
+                      ),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
               const DailyQuoteSwiper(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
             ],
           ),
         ),

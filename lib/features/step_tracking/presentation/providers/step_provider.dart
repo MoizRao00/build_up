@@ -23,6 +23,13 @@ class StepState {
     this.pedestrianStatus = 'stopped',
   });
 
+  String get activeDuration {
+    final totalMinutes = currentSteps ~/ 100;
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
+  }
+
   StepState copyWith({
     int? currentSteps,
     int? goalSteps,

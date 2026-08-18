@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../providers/gps_tracking_provider.dart';
 import '../widgets/glass_step_card.dart';
@@ -25,7 +26,81 @@ class _GpsTrackingScreenState extends ConsumerState<GpsTrackingScreen> {
     });
   }
 
-  void _showSummaryDialog(double distanceMeters, Duration duration) {
+  List<Polyline> _buildSpeedPolylines(List<Position> positions) {
+    List<Polyline> lines = [];
+    if (positions.length < 2) return lines;
+
+    for (int i = 0; i < positions.length - 1; i++) {
+      final p1 = positions[i];
+      final p2 = positions[i + 1];
+      final speed = p2.speed;
+
+      Color segmentColor = Colors.blue;
+      if (speed > 3.0) {
+        segmentColor = Colors.red;
+      } else if (speed > 2.0) {
+        segmentColor = Colors.orange;
+      } else if (speed > 1.0) {
+        segmentColor = Colors.green;
+      }
+
+      lines.add(
+        Polyline(
+          points: [
+            LatLng(p1.latitude, p1.longitude),
+            LatLng(p2.latitude, p2.longitude),
+          ],
+          color: segmentColor,
+          strokeWidth: 6,
+        ),
+      );
+    }
+    return lines;
+  }
+
+  List<Marker> _buildDistanceMarkers(List<Position> positions) {
+    List<Marker> markers = [];
+    double totalDistance = 0.0;
+    int nextMilestone = 1000;
+    final distanceCalc = const Distance();
+
+    for (int i = 0; i < positions.length - 1; i++) {
+      totalDistance += distanceCalc(
+        LatLng(positions[i].latitude, positions[i].longitude),
+        LatLng(positions[i + 1].latitude, positions[i + 1].longitude),
+      );
+
+      if (totalDistance >= nextMilestone) {
+        markers.add(
+          Marker(
+            point: LatLng(positions[i + 1].latitude, positions[i + 1].longitude),
+            width: 50,
+            height: 25,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4),
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  '${(nextMilestone / 1000).toInt()} km',
+                  style: const TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ),
+        );
+        nextMilestone += 1000;
+      }
+    }
+    return markers;
+  }
+
+  void _showSummaryDialog(double distanceMeters, Duration duration, List<LatLng> routePoints) {
     final distanceText = distanceMeters > 1000
         ? '${(distanceMeters / 1000).toStringAsFixed(2)} km'
         : '${distanceMeters.toStringAsFixed(0)} m';
@@ -46,32 +121,34 @@ class _GpsTrackingScreenState extends ConsumerState<GpsTrackingScreen> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Column(
-                  children: [
-                    const Icon(Icons.straighten, color: AppColors.primaryEmerald, size: 30),
-                    const SizedBox(height: 8),
-                    Text(distanceText, style: const TextStyle(color: Colors.white, fontSize: 18)),
-                    const Text('Distance', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                  ],
-                ),
-                Column(
-                  children: [
-                    const Icon(Icons.timer, color: AppColors.primaryEmerald, size: 30),
-                    const SizedBox(height: 8),
-                    Text(timeText, style: const TextStyle(color: Colors.white, fontSize: 18)),
-                    const Text('Duration', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                  ],
-                ),
-              ],
-            ),
-          ],
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Column(
+                    children: [
+                      const Icon(Icons.straighten, color: AppColors.primaryEmerald, size: 30),
+                      const SizedBox(height: 8),
+                      Text(distanceText, style: const TextStyle(color: Colors.white, fontSize: 18)),
+                      const Text('Distance', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      const Icon(Icons.timer, color: AppColors.primaryEmerald, size: 30),
+                      const SizedBox(height: 8),
+                      Text(timeText, style: const TextStyle(color: Colors.white, fontSize: 18)),
+                      const Text('Duration', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
         actions: [
           SizedBox(
@@ -99,11 +176,12 @@ class _GpsTrackingScreenState extends ConsumerState<GpsTrackingScreen> {
     if (state.isTracking) {
       double totalDistance = 0.0;
       final distanceCalc = const Distance();
+      final positions = state.recordedPositions;
 
-      for (int i = 0; i < state.routePoints.length - 1; i++) {
+      for (int i = 0; i < positions.length - 1; i++) {
         totalDistance += distanceCalc(
-            state.routePoints[i],
-            state.routePoints[i + 1]
+            LatLng(positions[i].latitude, positions[i].longitude),
+            LatLng(positions[i + 1].latitude, positions[i + 1].longitude)
         );
       }
 
@@ -111,8 +189,10 @@ class _GpsTrackingScreenState extends ConsumerState<GpsTrackingScreen> {
           ? DateTime.now().difference(state.startTime!)
           : Duration.zero;
 
+      final completedRoute = positions.map((p) => LatLng(p.latitude, p.longitude)).toList();
+
       notifier.stopTracking();
-      _showSummaryDialog(totalDistance, duration);
+      _showSummaryDialog(totalDistance, duration, completedRoute);
     } else {
       notifier.startTracking();
     }
@@ -166,15 +246,9 @@ class _GpsTrackingScreenState extends ConsumerState<GpsTrackingScreen> {
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.build_up',
               ),
-              if (trackingState.routePoints.length > 1)
+              if (trackingState.recordedPositions.length > 1)
                 PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: trackingState.routePoints,
-                      color: AppColors.primaryEmerald,
-                      strokeWidth: 6,
-                    ),
-                  ],
+                  polylines: _buildSpeedPolylines(trackingState.recordedPositions),
                 ),
               MarkerLayer(
                 markers: [
@@ -191,6 +265,7 @@ class _GpsTrackingScreenState extends ConsumerState<GpsTrackingScreen> {
                       size: 40,
                     ),
                   ),
+                  ..._buildDistanceMarkers(trackingState.recordedPositions),
                 ],
               ),
             ],
