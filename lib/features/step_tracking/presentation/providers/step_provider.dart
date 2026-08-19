@@ -13,6 +13,7 @@ class StepState {
   final double distanceKm;
   final bool isRestMode;
   final String pedestrianStatus;
+  final int coins;
 
   const StepState({
     required this.currentSteps,
@@ -21,6 +22,7 @@ class StepState {
     required this.distanceKm,
     required this.isRestMode,
     this.pedestrianStatus = 'stopped',
+    this.coins = 0,
   });
 
   String get activeDuration {
@@ -37,6 +39,7 @@ class StepState {
     double? distanceKm,
     bool? isRestMode,
     String? pedestrianStatus,
+    int? coins,
   }) {
     return StepState(
       currentSteps: currentSteps ?? this.currentSteps,
@@ -45,10 +48,10 @@ class StepState {
       distanceKm: distanceKm ?? this.distanceKm,
       isRestMode: isRestMode ?? this.isRestMode,
       pedestrianStatus: pedestrianStatus ?? this.pedestrianStatus,
+      coins: coins ?? this.coins,
     );
   }
 }
-
 final storageProvider = Provider<LocalStorageService>((ref) {
   return LocalStorageService();
 });
@@ -68,6 +71,7 @@ class StepNotifier extends Notifier<StepState> {
   StepState build() {
     final storage = ref.watch(storageProvider);
     final savedSteps = storage.getSteps();
+    final savedCoins = storage.getCoins();
 
     return StepState(
       currentSteps: savedSteps,
@@ -75,8 +79,12 @@ class StepNotifier extends Notifier<StepState> {
       calories: savedSteps * 0.04,
       distanceKm: savedSteps * 0.00075,
       isRestMode: false,
+      coins: savedCoins,
     );
   }
+
+
+
   Future<void> initializeTracking() async {
     final permissionStatus = await Permission.activityRecognition.request();
 
@@ -88,19 +96,51 @@ class StepNotifier extends Notifier<StepState> {
       widgetService.init();
 
       service.startTracking(
-        onStepCount: (steps) {
+        onStepCount: (totalDeviceSteps) {
           if (state.isRestMode) return;
+
+          final now = DateTime.now();
+          final dateStr = '${now.year}-${now.month}-${now.day}';
+          String lastDate = storage.getLastDate();
+          int baseline = storage.getBaselineSteps();
+
+          if (lastDate != dateStr) {
+            baseline = totalDeviceSteps;
+            storage.saveBaselineSteps(baseline);
+            storage.saveLastDate(dateStr);
+            storage.saveLastCoinStep(0);
+          }
+
+          int todaySteps = totalDeviceSteps - baseline;
+
+          if (todaySteps < 0) {
+            baseline = 0;
+            storage.saveBaselineSteps(0);
+            todaySteps = totalDeviceSteps;
+          }
+
+          int lastCoinStep = storage.getLastCoinStep();
+          int currentCoins = storage.getCoins();
+
+          if (todaySteps >= lastCoinStep + 100) {
+            int newCoins = (todaySteps - lastCoinStep) ~/ 100;
+            currentCoins += newCoins;
+            storage.saveCoins(currentCoins);
+            storage.saveLastCoinStep(lastCoinStep + (newCoins * 100));
+          }
+
           state = state.copyWith(
-            currentSteps: steps,
-            calories: steps * 0.04,
-            distanceKm: steps * 0.00075,
+            currentSteps: todaySteps,
+            calories: todaySteps * 0.04,
+            distanceKm: todaySteps * 0.00075,
+            coins: currentCoins,
           );
 
-          storage.saveSteps(steps);
-          widgetService.updateWidgetData(steps, state.goalSteps);
+          storage.saveSteps(todaySteps);
+          widgetService.updateWidgetData(todaySteps, state.goalSteps);
 
-          if (steps % 10 == 0) {
-            _syncStepsToFirestore(steps);
+          if (todaySteps % 10 == 0) {
+            _syncStepsToFirestore(todaySteps);
           }
         },
         onStatusChanged: (status) {

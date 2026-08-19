@@ -54,6 +54,7 @@ dependencies:
   cloud_firestore:
   home_widget:
   google_maps_flutter: ^2.18.0
+  fl_chart: ^1.2.0
 
 dev_dependencies:
   flutter_test:

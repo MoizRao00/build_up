@@ -1,4 +1,5 @@
 import 'package:build_up/features/step_tracking/presentation/screens/route_history_screen.dart';
+import 'package:build_up/features/step_tracking/presentation/screens/step_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_colors.dart';
@@ -68,13 +69,13 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                     padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     child: Row(
-                      children: const [
-                        Icon(Icons.bolt,
+                      children: [
+                        const Icon(Icons.bolt,
                             color: AppColors.primaryEmerald, size: 18),
-                        SizedBox(width: 4),
+                        const SizedBox(width: 4),
                         Text(
-                          '120 Coins',
-                          style: TextStyle(
+                          '${stepState.coins} Coins',
+                          style: const TextStyle(
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.w700,
                           ),
@@ -87,37 +88,45 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
               const SizedBox(height: 20),
               const RestModeCard(),
               const SizedBox(height: 16),
-              GlassCard(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Text(
-                      '${stepState.currentSteps}',
-                      style: const TextStyle(
-                        fontSize: 48,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const StepDetailsScreen()),
+                  );
+                },
+                child: GlassCard(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      Text(
+                        '${stepState.currentSteps}',
+                        style: const TextStyle(
+                          fontSize: 48,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Target: ${stepState.goalSteps} steps',
-                      style: const TextStyle(color: AppColors.textSecondary),
-                    ),
-                    const SizedBox(height: 20),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: LinearProgressIndicator(
-                        value: stepState.goalSteps > 0
-                            ? (stepState.currentSteps / stepState.goalSteps)
-                            .clamp(0.0, 1.0)
-                            : 0.0,
-                        minHeight: 12,
-                        backgroundColor: AppColors.glassCardBackground,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                            AppColors.primaryEmerald),
+                      Text(
+                        'Target: ${stepState.goalSteps} steps',
+                        style: const TextStyle(color: AppColors.textSecondary),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 20),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: LinearProgressIndicator(
+                          value: stepState.goalSteps > 0
+                              ? (stepState.currentSteps / stepState.goalSteps)
+                              .clamp(0.0, 1.0)
+                              : 0.0,
+                          minHeight: 12,
+                          backgroundColor: AppColors.glassCardBackground,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                              AppColors.primaryEmerald),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 16),

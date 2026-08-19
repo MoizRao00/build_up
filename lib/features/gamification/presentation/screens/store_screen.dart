@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../step_tracking/presentation/widgets/glass_step_card.dart';
+import '../../../step_tracking/presentation/providers/step_provider.dart';
 
 class StoreScreen extends ConsumerWidget {
   const StoreScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final stepState = ref.watch(stepNotifierProvider);
+
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -29,12 +32,12 @@ class StoreScreen extends ConsumerWidget {
                 GlassCard(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   child: Row(
-                    children: const [
-                      Icon(Icons.bolt, color: AppColors.primaryEmerald, size: 18),
-                      SizedBox(width: 4),
+                    children: [ // Removed const from this Row
+                      const Icon(Icons.bolt, color: AppColors.primaryEmerald, size: 18),
+                      const SizedBox(width: 4),
                       Text(
-                        '120 Coins',
-                        style: TextStyle(
+                        '${stepState.coins} Coins',
+                        style: const TextStyle(
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.bold,
                         ),

@@ -1,4 +1,3 @@
-
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -26,5 +25,28 @@ class LocalStorageService {
 
   int getCoins() {
     return _box.get('coins', defaultValue: 0);
+  }
+
+  void saveBaselineSteps(int steps) {
+    _box.put('baselineSteps', steps);
+  }
+
+  int getBaselineSteps() {
+    return _box.get('baselineSteps', defaultValue: 0);
+  }
+
+  void saveLastDate(String date) {
+    _box.put('lastDate', date);
+  }
+
+  String getLastDate() {
+    return _box.get('lastDate', defaultValue: '');
+  }
+  void saveLastCoinStep(int steps) {
+    _box.put('lastCoinStep', steps);
+  }
+
+  int getLastCoinStep() {
+    return _box.get('lastCoinStep', defaultValue: 0);
   }
 }
