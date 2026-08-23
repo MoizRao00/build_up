@@ -49,4 +49,26 @@ class LocalStorageService {
   int getLastCoinStep() {
     return _box.get('lastCoinStep', defaultValue: 0);
   }
+  void saveHardwareBaseline(int steps) {
+    _box.put('hardwareBaseline', steps);
+  }
+
+  int getHardwareBaseline() {
+    return _box.get('hardwareBaseline', defaultValue: 0);
+  }
+  List<String> getPurchasedThemes() {
+    return _box.get('purchasedThemes', defaultValue: <String>['default']) as List<String>;
+  }
+
+  void savePurchasedThemes(List<String> themes) {
+    _box.put('purchasedThemes', themes);
+  }
+
+  String getActiveTheme() {
+    return _box.get('activeTheme', defaultValue: 'default');
+  }
+
+  void saveActiveTheme(String themeId) {
+    _box.put('activeTheme', themeId);
+  }
 }

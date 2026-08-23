@@ -3,12 +3,12 @@ import 'package:build_up/features/step_tracking/presentation/screens/step_detail
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../shop/presentation/widgets/daily_quote_card.dart';
 import '../providers/step_provider.dart';
 import '../providers/active_duration_provider.dart';
 import '../widgets/glass_step_card.dart';
 import '../widgets/metric_glass_card.dart';
 import '../widgets/rest_mode_card.dart';
-import '../../../gamification/presentation/widgets/daily_quote_card.dart';
 import 'gps_tracking_screen.dart';
 
 class DashboardView extends ConsumerStatefulWidget {

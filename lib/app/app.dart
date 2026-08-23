@@ -5,6 +5,7 @@ import '../features/auth/presentation/providers/auth_provider.dart';
 import 'theme/app_colors.dart';
 import '../features/home/presentation/screens/main_screen.dart';
 import '../features/auth/presentation/screens/auth_screen.dart';
+import '../features/shop/presentation/providers/theme_provider.dart';
 
 class BuildUpApp extends ConsumerWidget {
   const BuildUpApp({super.key});
@@ -12,6 +13,7 @@ class BuildUpApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
+    final themeState = ref.watch(themeProvider);
 
     return MaterialApp(
       title: 'Build Up',
@@ -20,9 +22,9 @@ class BuildUpApp extends ConsumerWidget {
       darkTheme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: AppColors.backgroundDark,
-        primaryColor: AppColors.primaryEmerald,
-        colorScheme: const ColorScheme.dark(
-          primary: AppColors.primaryEmerald,
+        primaryColor: themeState.primaryColor,
+        colorScheme: ColorScheme.dark(
+          primary: themeState.primaryColor,
           surface: AppColors.backgroundDark,
         ),
         textTheme: GoogleFonts.interTextTheme(

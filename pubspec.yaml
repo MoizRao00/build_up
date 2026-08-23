@@ -38,7 +38,6 @@ dependencies:
   firebase_core: ^3.0.0
   flutter_riverpod: ^2.5.1
   google_fonts: ^6.2.1
-  pedometer: ^4.2.0
   permission_handler:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
@@ -55,6 +54,18 @@ dependencies:
   home_widget:
   google_maps_flutter: ^2.18.0
   fl_chart: ^1.2.0
+  health: ^13.3.2
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "assets/img.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+  adaptive_icon_background: "#FFFFFF" # or any color
+  adaptive_icon_foreground: "assets/img.png"
+
 
 dev_dependencies:
   flutter_test:
@@ -74,8 +85,8 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
+  assets:
+    - assets/
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

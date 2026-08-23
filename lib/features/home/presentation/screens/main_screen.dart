@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
-import '../../../gamification/presentation/screens/store_screen.dart';
 import '../../../settings/presentation/screens/setting_screen.dart';
+import '../../../shop/presentation/screens/store_screen.dart';
 import '../../../social/presentation/screens/social_screen.dart';
 import '../../../step_tracking/presentation/screens/dashboard_screen.dart';
 
@@ -18,7 +18,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final List<Widget> _screens = [
     const DashboardView(),
     const StoreScreen(),
-    const SocialScreen(),
+    const LeaderboardScreen(),
     SettingsScreen(),
   ];
 

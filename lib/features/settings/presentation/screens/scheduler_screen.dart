@@ -1,36 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_colors.dart';
-import '../../../../core/services/notification_service.dart';
+import '../../../../core/provider/notification_provider.dart';
 import '../../../step_tracking/presentation/widgets/glass_step_card.dart';
 
-class WalkSchedulerScreen extends StatefulWidget {
+class WalkSchedulerScreen extends ConsumerStatefulWidget {
   const WalkSchedulerScreen({super.key});
 
   @override
-  State<WalkSchedulerScreen> createState() => _WalkSchedulerScreenState();
+  ConsumerState<WalkSchedulerScreen> createState() => _WalkSchedulerScreenState();
 }
 
-class _WalkSchedulerScreenState extends State<WalkSchedulerScreen> {
-  TimeOfDay _selectedTime = const TimeOfDay(hour: 18, minute: 0);
-  bool _isReminderActive = false;
-  final NotificationService _notificationService = NotificationService();
-
-  @override
-  void initState() {
-    super.initState();
-    _notificationService.init();
-  }
+class _WalkSchedulerScreenState extends ConsumerState<WalkSchedulerScreen> {
+  TimeOfDay selectedTime = const TimeOfDay(hour: 8, minute: 0);
+  bool isScheduled = false;
 
   Future<void> _selectTime(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: _selectedTime,
+      initialTime: selectedTime,
       builder: (context, child) {
         return Theme(
           data: ThemeData.dark().copyWith(
             colorScheme: const ColorScheme.dark(
               primary: AppColors.primaryEmerald,
-              surface: AppColors.backgroundDark,
+              surface: AppColors.glassCardBackground,
             ),
           ),
           child: child!,
@@ -38,123 +32,119 @@ class _WalkSchedulerScreenState extends State<WalkSchedulerScreen> {
       },
     );
 
-    if (picked != null && picked != _selectedTime) {
+    if (picked != null && picked != selectedTime) {
       setState(() {
-        _selectedTime = picked;
+        selectedTime = picked;
+        isScheduled = false;
       });
     }
+  }
+
+  void _scheduleWalk() {
+    final notificationService = ref.read(notificationServiceProvider);
+
+    // Note: To make this trigger at a specific time in the future,
+    // you must update your service to use timezone scheduling.
+    // For now, this triggers the immediate alert pattern you provided.
+    notificationService.scheduleDailyWalkReminder(
+      selectedTime.hour,
+      selectedTime.minute,
+    );
+
+    setState(() {
+      isScheduled = true;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Walk scheduled for ${selectedTime.format(context)}'),
+        backgroundColor: AppColors.primaryEmerald,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text(
+          'DAILY WALK',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+          ),
+        ),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Set a daily reminder to get your steps in.',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 32),
+            GlassCard(
+              padding: const EdgeInsets.all(24),
+              child: Column(
                 children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+                  const Icon(Icons.timer, color: AppColors.primaryEmerald, size: 48),
+                  const SizedBox(height: 24),
+                  GestureDetector(
+                    onTap: () => _selectTime(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryEmerald.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.primaryEmerald.withOpacity(0.3)),
+                      ),
+                      child: Text(
+                        selectedTime.format(context),
+                        style: const TextStyle(
+                          fontSize: 48,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryEmerald,
+                        ),
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'DAILY WALK',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                      letterSpacing: 1.2,
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _scheduleWalk,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isScheduled ? AppColors.glassCardBorder : AppColors.primaryEmerald,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Text(
+                        isScheduled ? 'Scheduled' : 'Set Reminder',
+                        style: TextStyle(
+                          color: isScheduled ? AppColors.textSecondary : Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
-              GlassCard(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.timer,
-                      color: AppColors.primaryEmerald,
-                      size: 48,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Schedule Reminder',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Set a daily time to receive a notification reminding you to complete your step goal.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    InkWell(
-                      onTap: () => _selectTime(context),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 16, horizontal: 24),
-                        decoration: BoxDecoration(
-                          color: AppColors.backgroundDark.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.glassCardBorder),
-                        ),
-                        child: Text(
-                          _selectedTime.format(context),
-                          style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryEmerald,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Enable Reminder',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        Switch(
-                          value: _isReminderActive,
-                          activeColor: AppColors.primaryEmerald,
-                          onChanged: (value) {
-                            setState(() {
-                              _isReminderActive = value;
-                            });
-                            if (value) {
-                              _notificationService.scheduleDailyWalkReminder(
-                                  _selectedTime.hour, _selectedTime.minute);
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
