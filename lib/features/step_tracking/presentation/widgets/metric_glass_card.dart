@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../app/theme/app_colors.dart';
 import 'glass_step_card.dart';
 
@@ -20,7 +21,7 @@ class MetricGlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -28,18 +29,21 @@ class MetricGlassCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             '$value $unit',
-            style: const TextStyle(
+            style: GoogleFonts.sora(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
+              letterSpacing: .8,
             ),
           ),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
+            style:  GoogleFonts.sora(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+            letterSpacing: .8,
+          ),
           ),
         ],
       ),

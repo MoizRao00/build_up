@@ -5,6 +5,8 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Handler
+import android.os.Looper
 import androidx.annotation.NonNull
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -36,14 +38,31 @@ class MainActivity: FlutterActivity() {
             return
         }
 
+        val handler = Handler(Looper.getMainLooper())
+        var isResultSent = false
+
         val listener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
-                val steps = event.values[0].toInt()
-                sensorManager.unregisterListener(this)
-                result.success(steps)
+                if (!isResultSent) {
+                    val steps = event.values[0].toInt()
+                    isResultSent = true
+                    sensorManager.unregisterListener(this)
+                    handler.removeCallbacksAndMessages(null)
+                    result.success(steps)
+                }
             }
             override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {}
         }
+
+        // Timeout after 2 seconds if no sensor event is received
+        handler.postDelayed({
+            if (!isResultSent) {
+                isResultSent = true
+                sensorManager.unregisterListener(listener)
+                // Try to return 0 or a cached value instead of hanging
+                result.success(0)
+            }
+        }, 2000)
 
         sensorManager.registerListener(listener, stepSensor, SensorManager.SENSOR_DELAY_FASTEST)
     }

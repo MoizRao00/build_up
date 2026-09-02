@@ -79,4 +79,28 @@ class NotificationService {
       notificationDetails: details,
     );
   }
+
+  Future<void> showGoalReached(int steps) async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'step_goals',
+      'Step Goals',
+      channelDescription: 'Alerts when you reach your daily step goal',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails();
+
+    const NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _notificationsPlugin.show(
+      id: 2,
+      title: 'Goal Reached! 🏆',
+      body: 'Incredible work. You hit $steps steps today.',
+      notificationDetails: details,
+    );
+  }
 }

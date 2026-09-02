@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../../app/theme/app_colors.dart';
@@ -17,6 +18,14 @@ class GpsTrackingScreen extends ConsumerStatefulWidget {
 class _GpsTrackingScreenState extends ConsumerState<GpsTrackingScreen> {
   final MapController _mapController = MapController();
   bool _isMapReady = false;
+
+  // Dark mode color matrix filter
+  final darkMapFilter = const ColorFilter.matrix([
+    -1, 0, 0, 0, 255, // Red
+    0, -1, 0, 0, 255, // Green
+    0, 0, -1, 0, 255, // Blue
+    0, 0, 0, 1, 0,    // Alpha
+  ]);
 
   @override
   void initState() {
@@ -213,86 +222,99 @@ class _GpsTrackingScreenState extends ConsumerState<GpsTrackingScreen> {
     });
 
     final trackingState = ref.watch(gpsTrackingProvider);
+    final size = MediaQuery.of(context).size;
 
     return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'Ready to Walk',
+          style: GoogleFonts.sora(
+            fontSize: size.width * 0.06,
+            fontWeight: FontWeight.w900,
+            color: AppColors.textPrimary,
+            letterSpacing: 1,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+      ),
       backgroundColor: AppColors.backgroundDark,
-      body: Stack(
+      // We use a Column instead of a Stack to fix the layout spacing
+      body: Column(
         children: [
-          trackingState.errorMessage != null
-              ? Center(
-            child: Text(
-              trackingState.errorMessage!,
-              style: const TextStyle(color: Colors.white),
-            ),
-          )
-              : trackingState.currentPosition == null
-              ? const Center(
-            child: CircularProgressIndicator(
-              color: AppColors.primaryEmerald,
-            ),
-          )
-              : FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: LatLng(
-                trackingState.currentPosition!.latitude,
-                trackingState.currentPosition!.longitude,
-              ),
-              initialZoom: 17.0,
-              onMapReady: () => setState(() => _isMapReady = true),
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.build_up',
-              ),
-              if (trackingState.recordedPositions.length > 1)
-                PolylineLayer(
-                  polylines: _buildSpeedPolylines(trackingState.recordedPositions),
+          // Expanded takes up all available space between the AppBar and the bottom card
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              child: trackingState.errorMessage != null
+                  ? Center(
+                child: Text(
+                  trackingState.errorMessage!,
+                  style: const TextStyle(color: Colors.white),
                 ),
-              MarkerLayer(
-                markers: [
-                  Marker(
-                    point: LatLng(
+              )
+                  : trackingState.currentPosition == null
+                  ? const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.primaryEmerald,
+                ),
+              )
+                  : ClipRRect(
+                borderRadius: BorderRadius.circular(40),
+                child: FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: LatLng(
                       trackingState.currentPosition!.latitude,
                       trackingState.currentPosition!.longitude,
                     ),
-                    width: 40,
-                    height: 40,
-                    child: const Icon(
-                      Icons.location_on,
-                      color: Colors.blue,
-                      size: 40,
-                    ),
+                    initialZoom: 17.0,
+                    onMapReady: () => setState(() => _isMapReady = true),
                   ),
-                  ..._buildDistanceMarkers(trackingState.recordedPositions),
-                ],
-              ),
-            ],
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      color: AppColors.textPrimary,
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.example.build_up',
+                      // This builder applies the dark mode filter to the free tiles
+                      tileBuilder: (context, tileWidget, tile) {
+                        return ColorFiltered(
+                          colorFilter: darkMapFilter,
+                          child: tileWidget,
+                        );
+                      },
                     ),
-                    style: IconButton.styleFrom(
-                      backgroundColor: AppColors.backgroundDark.withOpacity(0.8),
+                    if (trackingState.recordedPositions.length > 1)
+                      PolylineLayer(
+                        polylines: _buildSpeedPolylines(trackingState.recordedPositions),
+                      ),
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: LatLng(
+                            trackingState.currentPosition!.latitude,
+                            trackingState.currentPosition!.longitude,
+                          ),
+                          width: 40,
+                          height: 40,
+                          child: const Icon(
+                            Icons.location_on,
+                            color: AppColors.primaryEmerald,
+                            size: 40,
+                          ),
+                        ),
+                        ..._buildDistanceMarkers(trackingState.recordedPositions),
+                      ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-          Positioned(
-            bottom: 40,
-            left: 20,
-            right: 20,
+          // The bottom card is naturally pushed to the bottom by the Expanded widget above
+          Padding(
+            padding: const EdgeInsets.only(left: 24.0, right: 24.0, bottom: 24.0),
             child: GlassCard(
               padding: const EdgeInsets.all(24),
               child: Column(

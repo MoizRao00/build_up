@@ -5,12 +5,14 @@ class LeaderboardUser {
   final String id;
   final String name;
   final int totalSteps;
+  final int monthlyHighScore;
   final String avatarUrl;
 
   LeaderboardUser({
     required this.id,
     required this.name,
     required this.totalSteps,
+    required this.monthlyHighScore,
     required this.avatarUrl,
   });
 
@@ -20,7 +22,8 @@ class LeaderboardUser {
       id: doc.id,
       name: data['name'] ?? 'Anonymous Walker',
       totalSteps: data['totalSteps'] ?? 0,
-      avatarUrl: data['avatarUrl'] ?? '',
+      monthlyHighScore: data['monthlyHighScore'] ?? 0,
+      avatarUrl: data['avatarUrl'] ?? data['photoUrl'] ?? '',
     );
   }
 }
@@ -28,7 +31,7 @@ class LeaderboardUser {
 final leaderboardProvider = StreamProvider<List<LeaderboardUser>>((ref) {
   return FirebaseFirestore.instance
       .collection('users')
-      .orderBy('totalSteps', descending: true)
+      .orderBy('monthlyHighScore', descending: true)
       .limit(50)
       .snapshots()
       .map((snapshot) {

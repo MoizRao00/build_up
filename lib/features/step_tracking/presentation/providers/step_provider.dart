@@ -5,10 +5,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:health/health.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../../../../core/provider/notification_provider.dart';
 import '../../../../core/services/local_storage_service.dart';
 import '../../../../core/services/native_health_service.dart';
 import '../../../../core/services/widget_service.dart';
-
+import '../../../auth/presentation/providers/auth_provider.dart';
 class StepState {
   final int currentSteps;
   final int goalSteps;
@@ -17,6 +18,7 @@ class StepState {
   final bool isRestMode;
   final String pedestrianStatus;
   final int coins;
+  final List<int> weeklySteps;
 
   const StepState({
     required this.currentSteps,
@@ -26,13 +28,19 @@ class StepState {
     required this.isRestMode,
     this.pedestrianStatus = 'stopped',
     this.coins = 0,
+    this.weeklySteps = const [0, 0, 0, 0, 0, 0, 0],
   });
 
   String get activeDuration {
     final totalMinutes = currentSteps ~/ 100;
+
+    if (totalMinutes < 60) {
+      return '$totalMinutes min';
+    }
+
     final hours = totalMinutes ~/ 60;
     final minutes = totalMinutes % 60;
-    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
+    return '$hours:${minutes.toString().padLeft(2, '0')}';
   }
 
   StepState copyWith({
@@ -43,6 +51,7 @@ class StepState {
     bool? isRestMode,
     String? pedestrianStatus,
     int? coins,
+    List<int>? weeklySteps,
   }) {
     return StepState(
       currentSteps: currentSteps ?? this.currentSteps,
@@ -52,10 +61,11 @@ class StepState {
       isRestMode: isRestMode ?? this.isRestMode,
       pedestrianStatus: pedestrianStatus ?? this.pedestrianStatus,
       coins: coins ?? this.coins,
+      weeklySteps: weeklySteps ?? this.weeklySteps,
+
     );
   }
 }
-
 final storageProvider = Provider<LocalStorageService>((ref) {
   return LocalStorageService();
 });
@@ -67,6 +77,7 @@ final widgetServiceProvider = Provider<WidgetService>((ref) {
 final stepNotifierProvider = NotifierProvider<StepNotifier, StepState>(StepNotifier.new);
 
 final Health _health = Health();
+
 class StepNotifier extends Notifier<StepState> {
   Timer? _pollingTimer;
   int _lastSyncedSteps = 0;
@@ -78,16 +89,34 @@ class StepNotifier extends Notifier<StepState> {
     });
 
     final storage = ref.watch(storageProvider);
-    final savedSteps = storage.getSteps();
+    final now = DateTime.now();
+    final dateStr = '${now.year}-${now.month}-${now.day}';
+    final lastDate = storage.getLastDate();
+
+    // If it's a new day, start at 0 steps
+    int displaySteps = 0;
+    if (lastDate == dateStr) {
+      displaySteps = storage.getSteps();
+    } else {
+      // Don't save yet, wait for initialization to confirm new baseline
+    }
+
     final savedCoins = storage.getCoins();
 
+    String weeklyData = storage.getWeeklySteps();
+
+    List<int> loadedWeeklySteps = weeklyData.split(',').map((e) => int.tryParse(e) ?? 0).toList();
+
+    if (loadedWeeklySteps.length != 7) loadedWeeklySteps = [0, 0, 0, 0, 0, 0, 0];
+
     return StepState(
-      currentSteps: savedSteps,
+      currentSteps: displaySteps,
       goalSteps: 10000,
-      calories: savedSteps * 0.04,
-      distanceKm: savedSteps * 0.00075,
+      calories: displaySteps * 0.04,
+      distanceKm: displaySteps * 0.00075,
       isRestMode: false,
       coins: savedCoins,
+      weeklySteps: loadedWeeklySteps,
     );
   }
 
@@ -97,14 +126,18 @@ class StepNotifier extends Notifier<StepState> {
 
     bool hasPermissions = await _health.hasPermissions(types) ?? false;
     if (!hasPermissions) {
-      hasPermissions = await _health.requestAuthorization(types);
+      try {
+        hasPermissions = await _health.requestAuthorization(types);
+      } catch (e) {
+        hasPermissions = false;
+      }
     }
 
     if (hasPermissions) {
       await _fetchHealthData();
 
       _pollingTimer?.cancel();
-      _pollingTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      _pollingTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
         if (!state.isRestMode) {
           _fetchHealthData();
         }
@@ -116,7 +149,7 @@ class StepNotifier extends Notifier<StepState> {
         await _fetchFallbackData();
 
         _pollingTimer?.cancel();
-        _pollingTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+        _pollingTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
           if (!state.isRestMode) {
             _fetchFallbackData();
           }
@@ -126,14 +159,17 @@ class StepNotifier extends Notifier<StepState> {
       }
     }
   }
+
   Future<void> _fetchHealthData() async {
-    final now = DateTime.now();
-    final midnight = DateTime(now.year, now.month, now.day);
-    int? steps = await _health.getTotalStepsInInterval(midnight, now);
-
-    _processSteps(steps ?? 0, 'tracking');
+    try {
+      final now = DateTime.now();
+      final midnight = DateTime(now.year, now.month, now.day);
+      int? steps = await _health.getTotalStepsInInterval(midnight, now);
+      _processSteps(steps ?? 0, 'tracking');
+    } catch (e) {
+      await _fetchFallbackData();
+    }
   }
-
   Future<void> _fetchFallbackData() async {
     final nativeHealth = ref.read(nativeHealthProvider);
     final hardwareSteps = await nativeHealth.getHardwareSteps();
@@ -149,6 +185,8 @@ class StepNotifier extends Notifier<StepState> {
       storage.saveLastDate(dateStr);
       storage.saveHardwareBaseline(hardwareSteps);
       storage.saveLastCoinStep(0);
+      storage.saveSteps(0);
+      _lastSyncedSteps = 0;
     }
 
     int baseline = storage.getHardwareBaseline();
@@ -161,24 +199,35 @@ class StepNotifier extends Notifier<StepState> {
     int todaySteps = hardwareSteps - baseline;
 
     if (todaySteps < 0) {
-      storage.saveHardwareBaseline(0);
-      baseline = 0;
-      todaySteps = hardwareSteps;
+      int savedStepsToday = storage.getSteps();
+      int accumulatedSteps = savedStepsToday + hardwareSteps;
+
+      int newBaseline = hardwareSteps - accumulatedSteps;
+      storage.saveHardwareBaseline(newBaseline);
+
+      todaySteps = accumulatedSteps;
     }
 
-    _processSteps(todaySteps, 'tracking_fallback');
+    _processSteps(todaySteps, 'fallback');
   }
+
   void _processSteps(int todaySteps, String trackingStatus) {
     final storage = ref.read(storageProvider);
     final now = DateTime.now();
     final dateStr = '${now.year}-${now.month}-${now.day}';
     String lastDate = storage.getLastDate();
 
+    // 1. Handle New Day Rollover Variables
     if (lastDate != dateStr) {
       storage.saveLastDate(dateStr);
       storage.saveLastCoinStep(0);
+      storage.saveGoalNotified(false);
     }
 
+    // Failsafe for rogue sensor data
+    if (todaySteps < 0) todaySteps = 0;
+
+    // 2. Process Coins and Notifications
     int lastCoinStep = storage.getLastCoinStep();
     int currentCoins = storage.getCoins();
 
@@ -189,20 +238,67 @@ class StepNotifier extends Notifier<StepState> {
       storage.saveLastCoinStep(lastCoinStep + (newCoins * 100));
     }
 
+    bool hasNotified = storage.getGoalNotified();
+    if (todaySteps >= state.goalSteps && !hasNotified) {
+      ref.read(notificationServiceProvider).showGoalReached(todaySteps);
+      storage.saveGoalNotified(true);
+    }
+
+
+    _updateLeaderboardScore(todaySteps);
+
+    String weeklyData = storage.getWeeklySteps();
+    List<int> weekly = weeklyData.split(',').map((e) => int.tryParse(e) ?? 0).toList();
+    if (weekly.length != 7) weekly = [0, 0, 0, 0, 0, 0, 0];
+
+
+    weekly[now.weekday - 1] = todaySteps;
+
+    storage.saveWeeklySteps(weekly.join(','));
+
     state = state.copyWith(
       currentSteps: todaySteps,
       calories: todaySteps * 0.04,
       distanceKm: todaySteps * 0.00075,
       coins: currentCoins,
       pedestrianStatus: trackingStatus,
+      weeklySteps: weekly,
     );
 
     storage.saveSteps(todaySteps);
     ref.read(widgetServiceProvider).updateWidgetData(todaySteps, state.goalSteps);
+  }
 
-    if (todaySteps >= _lastSyncedSteps + 10) {
-      _syncStepsToFirestore(todaySteps);
-      _lastSyncedSteps = todaySteps;
+  void _updateLeaderboardScore(int todaySteps) {
+    final storage = ref.read(storageProvider);
+    final now = DateTime.now();
+    final currentMonth = now.month;
+
+    int savedMonth = storage.getSavedMonth();
+
+    if (currentMonth != savedMonth) {
+      storage.saveSavedMonth(currentMonth);
+      storage.saveMonthlyHighScore(0);
+      _syncHighScoreToFirestore(0);
+    }
+
+    int highScore = storage.getMonthlyHighScore();
+
+    if (todaySteps > highScore) {
+      storage.saveMonthlyHighScore(todaySteps);
+      _syncHighScoreToFirestore(todaySteps);
+    }
+  }
+
+  void _syncHighScoreToFirestore(int score) {
+    final user = ref.read(authStateProvider).value;
+    if (user != null) {
+      FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'monthlyHighScore': score,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      }).catchError((error) {
+        print('Firestore sync failed: $error');
+      });
     }
   }
 
@@ -211,6 +307,7 @@ class StepNotifier extends Notifier<StepState> {
     if (user != null) {
       FirebaseFirestore.instance.collection('users').doc(user.uid).update({
         'totalSteps': steps,
+        'lastUpdate': FieldValue.serverTimestamp(),
       }).catchError((_) {});
     }
   }

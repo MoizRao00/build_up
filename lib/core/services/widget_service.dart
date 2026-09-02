@@ -1,21 +1,13 @@
 import 'package:home_widget/home_widget.dart';
 
 class WidgetService {
-  static const String appGroupId = 'group.com.example.buildup';
-  static const String androidWidgetName = 'StepWidgetProvider';
-  static const String iosWidgetName = 'StepWidget';
+  Future<void> init() async {}
 
-  Future<void> init() async {
-    await HomeWidget.setAppGroupId(appGroupId);
-  }
-
-  Future<void> updateWidgetData(int currentSteps, int goalSteps) async {
-    await HomeWidget.saveWidgetData<int>('current_steps', currentSteps);
-    await HomeWidget.saveWidgetData<int>('goal_steps', goalSteps);
-
+  Future<void> updateWidgetData(int steps, int goalSteps) async {
+    await HomeWidget.saveWidgetData<String>('_currentSteps', steps.toString());
     await HomeWidget.updateWidget(
-      name: androidWidgetName,
-      iOSName: iosWidgetName,
+      name: 'StepWidgetProvider',
+      androidName: 'StepWidgetProvider',
     );
   }
 }
