@@ -5,13 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../app/theme/app_colors.dart';
-import '../../../shop/presentation/widgets/daily_quote_card.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/step_provider.dart';
 import '../providers/active_duration_provider.dart';
 import '../widgets/glass_step_card.dart';
 import '../widgets/metric_glass_card.dart';
-import '../widgets/rest_mode_card.dart';
-import 'gps_tracking_screen.dart';
 
 class DashboardView extends ConsumerStatefulWidget {
   const DashboardView({super.key});
@@ -33,58 +31,67 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
   @override
   Widget build(BuildContext context) {
     final stepState = ref.watch(stepNotifierProvider);
+    final profileAsync = ref.watch(userProfileProvider);
+    final profile = profileAsync.value;
+    final avatar = profile?['avatarUrl'] ?? '👦';
+
+    final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
+          padding: EdgeInsets.all(screenWidth * 0.05),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Top Bar
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
-                    height: 44,
-                    width: 44,
-                    decoration: BoxDecoration(
+                    height: screenWidth * 0.11,
+                    width: screenWidth * 0.11,
+                    decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.primaryEmerald,
-                        width: 2,
-                      ),
-                      image: const DecorationImage(
-                        image: AssetImage('assets/profile.jpg'),
-                        fit: BoxFit.cover,
+                      color: Color(0xFF1E293B),
+                    ),
+                    child: Center(
+                      child: Text(
+                        avatar,
+                        style: TextStyle(fontSize: screenWidth * 0.0625),
                       ),
                     ),
                   ),
                   Text(
                     'BUILD UP',
                     style: GoogleFonts.sora(
-                      fontSize: 26,
+                      fontSize: screenWidth * 0.065,
                       fontWeight: FontWeight.w900,
                       color: AppColors.textPrimary,
                       letterSpacing: .1,
                     ),
                   ),
                   Container(
-                    height: 44,
-                    width: 44,
+                    height: screenWidth * 0.11,
+                    width: screenWidth * 0.11,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.notifications_none,
                       color: AppColors.primaryEmerald,
-                      size: 26,
+                      size: screenWidth * 0.065,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 48),
+              SizedBox(height: screenHeight * 0.056),
+
+              // Step Gauge
               GestureDetector(
                 onTap: () {
                   Navigator.push(
@@ -98,34 +105,30 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                     alignment: Alignment.center,
                     children: [
                       SizedBox(
-                        height: 240,
-                        width: 240,
+                        height: screenWidth * 0.6,
+                        width: screenWidth * 0.6,
                         child: CircularProgressIndicator(
                           value: stepState.goalSteps > 0
                               ? (stepState.currentSteps / stepState.goalSteps)
                                   .clamp(0.0, 1.0)
                               : 0.0,
-                          strokeWidth: 20,
+                          strokeWidth: screenWidth * 0.05,
                           backgroundColor:
                               AppColors.primaryEmerald.withOpacity(0.1),
-
                           valueColor: const AlwaysStoppedAnimation<Color>(
                               AppColors.primaryEmerald),
                           strokeCap: StrokeCap.round,
                         ),
                       ),
-
                       ClipOval(
                         child: BackdropFilter(
                           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                           child: Container(
-                            height: 210,
-                            width: 210,
-                            decoration: BoxDecoration(
+                            height: screenWidth * 0.525,
+                            width: screenWidth * 0.525,
+                            decoration: const BoxDecoration(
                               shape: BoxShape.circle,
                               color: AppColors.glassCardBackground,
-
-
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -133,7 +136,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                                 Text(
                                   '${stepState.currentSteps}',
                                   style: GoogleFonts.sora(
-                                    fontSize: 42,
+                                    fontSize: screenWidth * 0.105,
                                     fontWeight: FontWeight.w900,
                                     color: AppColors.textPrimary,
                                     height: 1.2,
@@ -142,7 +145,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                                 Text(
                                   '/ ${stepState.goalSteps} STEPS',
                                   style: GoogleFonts.jetBrainsMono(
-                                    fontSize: 12,
+                                    fontSize: screenWidth * 0.03,
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.textSecondary,
                                     letterSpacing: 1.2,
@@ -157,9 +160,11 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                   ),
                 ),
               ),
-              const SizedBox(height: 36),
+              SizedBox(height: screenHeight * 0.042),
+
+              // KCAL Card
               GlassCard(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(screenWidth * 0.06),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -169,16 +174,16 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                         Text(
                           stepState.calories.toStringAsFixed(0),
                           style: GoogleFonts.sora(
-                            fontSize: 36,
+                            fontSize: screenWidth * 0.09,
                             fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: screenHeight * 0.005),
                         Text(
                           'KCAL BURNED',
                           style: GoogleFonts.jetBrainsMono(
-                            fontSize: 12,
+                            fontSize: screenWidth * 0.03,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textSecondary,
                             letterSpacing: 1.2,
@@ -187,21 +192,23 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: EdgeInsets.all(screenWidth * 0.035),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.primaryEmerald.withOpacity(0.15),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.local_fire_department,
                         color: AppColors.primaryEmerald,
-                        size: 28,
+                        size: screenWidth * 0.07,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: screenHeight * 0.02),
+
+              // Metrics Row
               Row(
                 children: [
                   Expanded(
@@ -212,7 +219,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                       icon: Icons.map,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: screenWidth * 0.025),
                   Expanded(
                     child: MetricGlassCard(
                       label: 'Active Time',
@@ -223,8 +230,9 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: screenHeight * 0.02),
 
+              // History Card
               GestureDetector(
                 onTap: () {
                   Navigator.push(
@@ -234,22 +242,22 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                   );
                 },
                 child: GlassCard(
-                  padding: const EdgeInsets.all(24),
+                  padding: EdgeInsets.all(screenWidth * 0.06),
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: EdgeInsets.all(screenWidth * 0.03),
                         decoration: BoxDecoration(
                           color: AppColors.primaryEmerald.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(screenWidth * 0.04),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.history,
                           color: AppColors.primaryEmerald,
-                          size: 28,
+                          size: screenWidth * 0.07,
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      SizedBox(width: screenWidth * 0.04),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -257,17 +265,17 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                             Text(
                               'Workout History',
                               style: GoogleFonts.sora(
-                                fontSize: 18,
+                                fontSize: screenWidth * 0.045,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.textPrimary,
                                 letterSpacing: .8,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                             Text(
+                            SizedBox(height: screenHeight * 0.005),
+                            Text(
                               'View past routes and records',
                               style: GoogleFonts.sora(
-                                fontSize: 12,
+                                fontSize: screenWidth * 0.03,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.textSecondary,
                                 letterSpacing: .8,
@@ -284,8 +292,6 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                   ),
                 ),
               ),
-
-
             ],
           ),
         ),

@@ -126,4 +126,12 @@ class LocalStorageService {
   void saveWeeklySteps(String data) {
     _box.put('weeklySteps', data);
   }
+
+  void saveStepGoal(int goal) {
+    _box.put('stepGoal', goal);
+  }
+
+  int getStepGoal() {
+    return _box.get('stepGoal', defaultValue: 10000);
+  }
 }

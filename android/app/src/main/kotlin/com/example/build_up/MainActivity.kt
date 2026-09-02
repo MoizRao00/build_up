@@ -8,11 +8,11 @@ import android.hardware.SensorManager
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.NonNull
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity: FlutterActivity() {
+class MainActivity: FlutterFragmentActivity() {
     private val channelName = "com.buildup.app/health_services"
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
@@ -54,12 +54,10 @@ class MainActivity: FlutterActivity() {
             override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {}
         }
 
-        // Timeout after 2 seconds if no sensor event is received
         handler.postDelayed({
             if (!isResultSent) {
                 isResultSent = true
                 sensorManager.unregisterListener(listener)
-                // Try to return 0 or a cached value instead of hanging
                 result.success(0)
             }
         }, 2000)

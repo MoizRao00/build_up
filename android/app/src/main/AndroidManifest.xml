@@ -36,9 +36,6 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-        <meta-data
-            android:name="health_permissions"
-            android:resource="@array/health_permissions" />
 
         <receiver android:name=".StepWidgetProvider" android:exported="true">
             <intent-filter>
@@ -55,5 +52,6 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <package android:name="com.google.android.apps.healthdata" />
     </queries>
 </manifest>

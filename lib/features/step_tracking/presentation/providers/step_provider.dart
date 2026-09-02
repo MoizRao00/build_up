@@ -102,6 +102,7 @@ class StepNotifier extends Notifier<StepState> {
     }
 
     final savedCoins = storage.getCoins();
+    final savedGoal = storage.getStepGoal();
 
     String weeklyData = storage.getWeeklySteps();
 
@@ -111,7 +112,7 @@ class StepNotifier extends Notifier<StepState> {
 
     return StepState(
       currentSteps: displaySteps,
-      goalSteps: 10000,
+      goalSteps: savedGoal,
       calories: displaySteps * 0.04,
       distanceKm: displaySteps * 0.00075,
       isRestMode: false,
@@ -217,13 +218,25 @@ class StepNotifier extends Notifier<StepState> {
     final dateStr = '${now.year}-${now.month}-${now.day}';
     String lastDate = storage.getLastDate();
 
-    // 1. Handle New Day Rollover Variables
     if (lastDate != dateStr) {
       storage.saveLastDate(dateStr);
       storage.saveLastCoinStep(0);
       storage.saveGoalNotified(false);
-    }
 
+      // FIX: Clear weekly data for the new day or reset the week
+      String weeklyData = storage.getWeeklySteps();
+      List<int> weekly = weeklyData.split(',').map((e) => int.tryParse(e) ?? 0).toList();
+      if (weekly.length != 7) weekly = [0, 0, 0, 0, 0, 0, 0];
+
+      if (now.weekday == 1) {
+        // If it's Monday, reset the whole week to 0
+        weekly = [0, 0, 0, 0, 0, 0, 0];
+      } else {
+        // If it's any other day, just clear today's slot to be safe
+        weekly[now.weekday - 1] = 0;
+      }
+      storage.saveWeeklySteps(weekly.join(','));
+    }
     // Failsafe for rogue sensor data
     if (todaySteps < 0) todaySteps = 0;
 
@@ -244,7 +257,7 @@ class StepNotifier extends Notifier<StepState> {
       storage.saveGoalNotified(true);
     }
 
-
+    _syncStepsToFirestore(todaySteps);
     _updateLeaderboardScore(todaySteps);
 
     String weeklyData = storage.getWeeklySteps();
@@ -312,6 +325,13 @@ class StepNotifier extends Notifier<StepState> {
     }
   }
 
+  void updateGoal(int newGoal) {
+    final storage = ref.read(storageProvider);
+    storage.saveStepGoal(newGoal);
+    state = state.copyWith(goalSteps: newGoal);
+    ref.read(widgetServiceProvider).updateWidgetData(state.currentSteps, newGoal);
+  }
+
   void toggleRestMode() {
     state = state.copyWith(isRestMode: !state.isRestMode);
   }
@@ -327,6 +347,29 @@ class StepNotifier extends Notifier<StepState> {
       return true;
     }
     return false;
+  }
+
+  void _handleNewDay(LocalStorageService storage, String dateStr, DateTime now, {int? hardwareSteps}) {
+    storage.saveLastDate(dateStr);
+    storage.saveLastCoinStep(0);
+    storage.saveGoalNotified(false);
+    storage.saveSteps(0);
+
+    if (hardwareSteps != null) {
+      storage.saveHardwareBaseline(hardwareSteps);
+    }
+
+    // Weekly reset logic (Move it here from _processSteps)
+    String weeklyData = storage.getWeeklySteps();
+    List<int> weekly = weeklyData.split(',').map((e) => int.tryParse(e) ?? 0).toList();
+    if (weekly.length != 7) weekly = [0, 0, 0, 0, 0, 0, 0];
+
+    if (now.weekday == 1) {
+      weekly = [0, 0, 0, 0, 0, 0, 0];
+    } else {
+      weekly[now.weekday - 1] = 0;
+    }
+    storage.saveWeeklySteps(weekly.join(','));
   }
 
 }

@@ -5,7 +5,6 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../shop/presentation/providers/theme_provider.dart';
 import '../providers/leaderboard_provider.dart';
 
-
 class LeaderboardScreen extends ConsumerWidget {
   const LeaderboardScreen({super.key});
 
@@ -14,25 +13,25 @@ class LeaderboardScreen extends ConsumerWidget {
     final themeState = ref.watch(themeProvider);
     final leaderboardAsync = ref.watch(leaderboardProvider);
     final size = MediaQuery.of(context).size;
+    
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-              Center(
-                child: Text(
-                          'LeaderBoard',
-                          style: GoogleFonts.sora(
-                            fontSize: size.width * 0.06,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
-                            letterSpacing: 1.2,
-
-                          ),
+            Center(
+              child: Text(
+                'LeaderBoard',
+                style: GoogleFonts.sora(
+                  fontSize: size.width * 0.06,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary,
+                  letterSpacing: 1.2,
                 ),
               ),
-          const SizedBox(height: 24),
+            ),
+            const SizedBox(height: 24),
             Expanded(
               child: leaderboardAsync.when(
                 data: (users) {
@@ -47,56 +46,82 @@ class LeaderboardScreen extends ConsumerWidget {
 
                   return ListView.builder(
                     itemCount: users.length,
-                      // Inside your ListView.builder
-                      itemBuilder: (context, index) {
-                        final user = users[index];
+                    itemBuilder: (context, index) {
+                      final user = users[index];
+                      final bool isImageUrl = user.avatarUrl.startsWith('http');
 
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          decoration: BoxDecoration(
-                            color: AppColors.glassCardBackground,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.glassCardBorder),
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.glassCardBackground.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                            width: 1,
                           ),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: AppColors.primaryEmerald.withOpacity(0.2),
-                              backgroundImage: user.avatarUrl.isNotEmpty ? NetworkImage(user.avatarUrl) : null,
-                              child: user.avatarUrl.isEmpty
-                                  ? const Icon(Icons.person, color: AppColors.primaryEmerald)
-                                  : null,
-                            ),
-                            title: Text(
-                              user.name,
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontWeight: FontWeight.bold,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.primaryEmerald,
+                                  width: 2,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                backgroundColor: const Color(0xFF1E293B),
+                                backgroundImage: isImageUrl ? NetworkImage(user.avatarUrl) : null,
+                                child: !isImageUrl && user.avatarUrl.isNotEmpty
+                                    ? Text(user.avatarUrl, style: const TextStyle(fontSize: 24))
+                                    : (user.avatarUrl.isEmpty 
+                                        ? const Icon(Icons.person, color: AppColors.primaryEmerald)
+                                        : null),
                               ),
                             ),
-                            trailing: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  '${user.monthlyHighScore}',
-                                  style: const TextStyle(
-                                    color: AppColors.primaryEmerald,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    user.name,
+                                    style: GoogleFonts.sora(
+                                      color: AppColors.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                    ),
                                   ),
-                                ),
-                                const Text(
-                                  'High Score',
-                                  style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 12,
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'HIGH SCORE',
+                                    style: GoogleFonts.jetBrainsMono(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 11,
+                                      letterSpacing: 1.2,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        );
-                      }
+                            Text(
+                              '${user.monthlyHighScore}',
+                              style: GoogleFonts.sora(
+                                color: AppColors.primaryEmerald,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 20,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   );
                 },
                 loading: () => Center(

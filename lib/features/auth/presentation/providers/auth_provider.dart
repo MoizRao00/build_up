@@ -14,6 +14,18 @@ final authStateProvider = StreamProvider<User?>((ref) {
   return ref.watch(firebaseAuthProvider).authStateChanges();
 });
 
+final userProfileProvider = StreamProvider<Map<String, dynamic>?>((ref) {
+  final user = ref.watch(authStateProvider).value;
+  if (user == null) return Stream.value(null);
+
+  return ref
+      .watch(firestoreProvider)
+      .collection('users')
+      .doc(user.uid)
+      .snapshots()
+      .map((doc) => doc.data());
+});
+
 final authControllerProvider = Provider<AuthController>((ref) {
   return AuthController(
     ref.watch(firebaseAuthProvider),
@@ -42,14 +54,22 @@ class AuthController {
       final displayName = email.split('@').first;
 
       await _firestore.collection('users').doc(user.uid).set({
+        'name': displayName,
         'displayName': displayName,
         'totalSteps': 0,
         'photoUrl': '',
+        'avatarUrl': '🤖',
       });
+
+      await user.updateDisplayName(displayName);
     }
   }
 
   Future<void> signOut() async {
     await _auth.signOut();
+  }
+
+  Future<void> resetPassword(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
   }
 }

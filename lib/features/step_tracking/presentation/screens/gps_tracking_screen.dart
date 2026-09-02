@@ -227,7 +227,7 @@ class _GpsTrackingScreenState extends ConsumerState<GpsTrackingScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Ready to Walk',
+          'Ready to Run',
           style: GoogleFonts.sora(
             fontSize: size.width * 0.06,
             fontWeight: FontWeight.w900,
@@ -323,7 +323,7 @@ class _GpsTrackingScreenState extends ConsumerState<GpsTrackingScreen> {
                   Text(
                     trackingState.isTracking
                         ? 'TRACKING ACTIVE'
-                        : 'READY TO WALK',
+                        : 'READY TO RUN',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
