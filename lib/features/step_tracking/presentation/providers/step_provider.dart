@@ -1,7 +1,7 @@
 import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:health/health.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -10,6 +10,29 @@ import '../../../../core/services/local_storage_service.dart';
 import '../../../../core/services/native_health_service.dart';
 import '../../../../core/services/widget_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../social/presentation/providers/challenge_provider.dart';
+
+enum LeagueTier {
+  bronze,
+  silver,
+  gold,
+  diamond
+}
+
+extension LeagueTierColor on LeagueTier {
+  Color get color {
+    switch (this) {
+      case LeagueTier.diamond:
+        return Colors.cyanAccent;
+      case LeagueTier.gold:
+        return Colors.amber;
+      case LeagueTier.silver:
+        return const Color(0xFFC0C0C0);
+      case LeagueTier.bronze:
+        return const Color(0xFFCD7F32);
+    }
+  }
+}
 class StepState {
   final int currentSteps;
   final int goalSteps;
@@ -62,10 +85,40 @@ class StepState {
       pedestrianStatus: pedestrianStatus ?? this.pedestrianStatus,
       coins: coins ?? this.coins,
       weeklySteps: weeklySteps ?? this.weeklySteps,
-
     );
   }
+  LeagueTier get currentLeague {
+    int totalWeeklySteps = weeklySteps.reduce((a, b) => a + b);
+    int activeDays = DateTime.now().weekday;
+
+    int averageSteps = totalWeeklySteps ~/ activeDays;
+
+    if (averageSteps >= 12000) {
+      return LeagueTier.diamond;
+    }
+    if (averageSteps >= 8000) {
+      return LeagueTier.gold;
+    }
+    if (averageSteps >= 5000) {
+      return LeagueTier.silver;
+    }
+    return LeagueTier.bronze;
+  }
+
+  String get tierName {
+    switch (currentLeague) {
+      case LeagueTier.diamond:
+        return 'Diamond Tier';
+      case LeagueTier.gold:
+        return 'Gold Tier';
+      case LeagueTier.silver:
+        return 'Silver Tier';
+      case LeagueTier.bronze:
+        return 'Bronze Tier';
+    }
+  }
 }
+
 final storageProvider = Provider<LocalStorageService>((ref) {
   return LocalStorageService();
 });
@@ -80,32 +133,29 @@ final Health _health = Health();
 
 class StepNotifier extends Notifier<StepState> {
   Timer? _pollingTimer;
+  AppLifecycleListener? _lifecycleListener;
   int _lastSyncedSteps = 0;
 
   @override
   StepState build() {
+    _lifecycleListener = AppLifecycleListener(
+      onPause: _forceCloudSync,
+      onInactive: _forceCloudSync,
+      onDetach: _forceCloudSync,
+    );
+
     ref.onDispose(() {
       _pollingTimer?.cancel();
+      _lifecycleListener?.dispose();
     });
 
+    _handleDailyResetIfNeeded();
     final storage = ref.watch(storageProvider);
-    final now = DateTime.now();
-    final dateStr = '${now.year}-${now.month}-${now.day}';
-    final lastDate = storage.getLastDate();
-
-    // If it's a new day, start at 0 steps
-    int displaySteps = 0;
-    if (lastDate == dateStr) {
-      displaySteps = storage.getSteps();
-    } else {
-      // Don't save yet, wait for initialization to confirm new baseline
-    }
-
+    final displaySteps = storage.getSteps();
     final savedCoins = storage.getCoins();
     final savedGoal = storage.getStepGoal();
 
     String weeklyData = storage.getWeeklySteps();
-
     List<int> loadedWeeklySteps = weeklyData.split(',').map((e) => int.tryParse(e) ?? 0).toList();
 
     if (loadedWeeklySteps.length != 7) loadedWeeklySteps = [0, 0, 0, 0, 0, 0, 0];
@@ -119,6 +169,46 @@ class StepNotifier extends Notifier<StepState> {
       coins: savedCoins,
       weeklySteps: loadedWeeklySteps,
     );
+  }
+  void _forceCloudSync() {
+    if (state.currentSteps > _lastSyncedSteps) {
+      _syncCompleteProfileToFirestore(
+        state.currentSteps,
+        state.calories,
+        state.distanceKm,
+        state.coins,
+        state.weeklySteps,
+      );
+      _lastSyncedSteps = state.currentSteps;
+    }
+  }
+
+  void _handleDailyResetIfNeeded({int? hardwareSteps}) {
+    final storage = ref.read(storageProvider);
+    final now = DateTime.now();
+    final dateStr = '${now.year}-${now.month}-${now.day}';
+
+    if (storage.getLastDate() != dateStr) {
+      storage.saveLastDate(dateStr);
+      storage.saveSteps(0);
+      storage.saveLastCoinStep(0);
+      storage.saveGoalNotified(false);
+
+      if (hardwareSteps != null) {
+        storage.saveHardwareBaseline(hardwareSteps);
+      }
+
+      String weeklyData = storage.getWeeklySteps();
+      List<int> weekly = weeklyData.split(',').map((e) => int.tryParse(e) ?? 0).toList();
+      if (weekly.length != 7) weekly = [0, 0, 0, 0, 0, 0, 0];
+
+      if (now.weekday == DateTime.monday) {
+        weekly = [0, 0, 0, 0, 0, 0, 0];
+      } else {
+        weekly[now.weekday - 1] = 0;
+      }
+      storage.saveWeeklySteps(weekly.join(','));
+    }
   }
 
   Future<void> initializeTracking() async {
@@ -171,25 +261,16 @@ class StepNotifier extends Notifier<StepState> {
       await _fetchFallbackData();
     }
   }
+
   Future<void> _fetchFallbackData() async {
     final nativeHealth = ref.read(nativeHealthProvider);
     final hardwareSteps = await nativeHealth.getHardwareSteps();
 
     if (hardwareSteps == 0) return;
 
+    _handleDailyResetIfNeeded(hardwareSteps: hardwareSteps);
+
     final storage = ref.read(storageProvider);
-    final now = DateTime.now();
-    final dateStr = '${now.year}-${now.month}-${now.day}';
-    String lastDate = storage.getLastDate();
-
-    if (lastDate != dateStr) {
-      storage.saveLastDate(dateStr);
-      storage.saveHardwareBaseline(hardwareSteps);
-      storage.saveLastCoinStep(0);
-      storage.saveSteps(0);
-      _lastSyncedSteps = 0;
-    }
-
     int baseline = storage.getHardwareBaseline();
 
     if (baseline == 0) {
@@ -213,34 +294,13 @@ class StepNotifier extends Notifier<StepState> {
   }
 
   void _processSteps(int todaySteps, String trackingStatus) {
+    _handleDailyResetIfNeeded();
+
     final storage = ref.read(storageProvider);
     final now = DateTime.now();
-    final dateStr = '${now.year}-${now.month}-${now.day}';
-    String lastDate = storage.getLastDate();
 
-    if (lastDate != dateStr) {
-      storage.saveLastDate(dateStr);
-      storage.saveLastCoinStep(0);
-      storage.saveGoalNotified(false);
-
-      // FIX: Clear weekly data for the new day or reset the week
-      String weeklyData = storage.getWeeklySteps();
-      List<int> weekly = weeklyData.split(',').map((e) => int.tryParse(e) ?? 0).toList();
-      if (weekly.length != 7) weekly = [0, 0, 0, 0, 0, 0, 0];
-
-      if (now.weekday == 1) {
-        // If it's Monday, reset the whole week to 0
-        weekly = [0, 0, 0, 0, 0, 0, 0];
-      } else {
-        // If it's any other day, just clear today's slot to be safe
-        weekly[now.weekday - 1] = 0;
-      }
-      storage.saveWeeklySteps(weekly.join(','));
-    }
-    // Failsafe for rogue sensor data
     if (todaySteps < 0) todaySteps = 0;
 
-    // 2. Process Coins and Notifications
     int lastCoinStep = storage.getLastCoinStep();
     int currentCoins = storage.getCoins();
 
@@ -257,22 +317,30 @@ class StepNotifier extends Notifier<StepState> {
       storage.saveGoalNotified(true);
     }
 
-    _syncStepsToFirestore(todaySteps);
     _updateLeaderboardScore(todaySteps);
 
     String weeklyData = storage.getWeeklySteps();
     List<int> weekly = weeklyData.split(',').map((e) => int.tryParse(e) ?? 0).toList();
     if (weekly.length != 7) weekly = [0, 0, 0, 0, 0, 0, 0];
 
-
     weekly[now.weekday - 1] = todaySteps;
-
     storage.saveWeeklySteps(weekly.join(','));
 
+    double currentCalories = todaySteps * 0.04;
+    double currentDistance = todaySteps * 0.00075;
+
+
+    storage.saveSteps(todaySteps);
+    ref.read(widgetServiceProvider).updateWidgetData(todaySteps, state.goalSteps);
+
+
+    if (todaySteps - _lastSyncedSteps >= 500) {
+      _forceCloudSync();
+    }
     state = state.copyWith(
       currentSteps: todaySteps,
-      calories: todaySteps * 0.04,
-      distanceKm: todaySteps * 0.00075,
+      calories: currentCalories,
+      distanceKm: currentDistance,
       coins: currentCoins,
       pedestrianStatus: trackingStatus,
       weeklySteps: weekly,
@@ -280,6 +348,14 @@ class StepNotifier extends Notifier<StepState> {
 
     storage.saveSteps(todaySteps);
     ref.read(widgetServiceProvider).updateWidgetData(todaySteps, state.goalSteps);
+
+    final int previousSteps = state.currentSteps;
+    final int deltaSteps = todaySteps - previousSteps;
+
+    if (deltaSteps > 0) {
+      ref.read(challengeProvider.notifier).addStepsToActiveChallenges(deltaSteps);
+    }
+
   }
 
   void _updateLeaderboardScore(int todaySteps) {
@@ -310,18 +386,34 @@ class StepNotifier extends Notifier<StepState> {
         'monthlyHighScore': score,
         'lastUpdated': FieldValue.serverTimestamp(),
       }).catchError((error) {
-        print('Firestore sync failed: $error');
+        debugPrint('Firestore high score sync failed: $error');
       });
     }
   }
 
-  void _syncStepsToFirestore(int steps) {
+  void _syncCompleteProfileToFirestore(int todaySteps, double calories, double distance, int coins, List<int> weekly) {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-        'totalSteps': steps,
-        'lastUpdate': FieldValue.serverTimestamp(),
-      }).catchError((_) {});
+      final now = DateTime.now();
+      final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+      int totalWeeklySteps = weekly.reduce((a, b) => a + b);
+      double weeklyCalories = totalWeeklySteps * 0.04;
+
+      FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'currentCoins': coins,
+        'todaySteps': todaySteps,
+        'todayCalories': calories,
+        'todayDistanceKm': distance,
+        'weeklySteps': weekly,
+        'weeklyCalories': weeklyCalories,
+        'lastUpdated': FieldValue.serverTimestamp(),
+        'dailyHistory': {
+          dateStr: todaySteps,
+        }
+      }, SetOptions(merge: true)).catchError((error) {
+        debugPrint('Firestore profile sync failed: $error');
+      });
     }
   }
 
@@ -348,28 +440,92 @@ class StepNotifier extends Notifier<StepState> {
     }
     return false;
   }
+  Future<void> forceRefresh() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (doc.exists) {
+          final data = doc.data()!;
+          final storage = ref.read(storageProvider);
 
-  void _handleNewDay(LocalStorageService storage, String dateStr, DateTime now, {int? hardwareSteps}) {
-    storage.saveLastDate(dateStr);
-    storage.saveLastCoinStep(0);
-    storage.saveGoalNotified(false);
-    storage.saveSteps(0);
+          int fetchedCoins = data['currentCoins'] ?? storage.getCoins();
+          int fetchedGoal = data['stepGoal'] ?? storage.getStepGoal();
 
-    if (hardwareSteps != null) {
-      storage.saveHardwareBaseline(hardwareSteps);
+          List<int> fetchedWeekly = state.weeklySteps;
+          if (data['weeklySteps'] != null) {
+            fetchedWeekly = (data['weeklySteps'] as List<dynamic>).map((e) => int.parse(e.toString())).toList();
+          }
+
+          storage.saveCoins(fetchedCoins);
+          storage.saveStepGoal(fetchedGoal);
+          storage.saveWeeklySteps(fetchedWeekly.join(','));
+
+          state = state.copyWith(
+            coins: fetchedCoins,
+            goalSteps: fetchedGoal,
+            weeklySteps: fetchedWeekly,
+          );
+        }
+      } catch (e) {
+        debugPrint('Firebase refresh failed: $e');
+      }
     }
 
-    // Weekly reset logic (Move it here from _processSteps)
-    String weeklyData = storage.getWeeklySteps();
-    List<int> weekly = weeklyData.split(',').map((e) => int.tryParse(e) ?? 0).toList();
-    if (weekly.length != 7) weekly = [0, 0, 0, 0, 0, 0, 0];
+    // Force an immediate local sensor update
+    await initializeTracking();
+  }
+  Future<void> restoreDataFromFirebase() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-    if (now.weekday == 1) {
-      weekly = [0, 0, 0, 0, 0, 0, 0];
-    } else {
-      weekly[now.weekday - 1] = 0;
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (!doc.exists) return;
+
+      final data = doc.data()!;
+      final storage = ref.read(storageProvider);
+
+      // 1. Restore static profile data
+      if (data.containsKey('stepGoal')) storage.saveStepGoal(data['stepGoal']);
+      if (data.containsKey('currentCoins')) storage.saveCoins(data['currentCoins']);
+      if (data.containsKey('monthlyHighScore')) storage.saveMonthlyHighScore(data['monthlyHighScore']);
+
+      // 2. Restore weekly array
+      List<int> loadedWeekly = [0, 0, 0, 0, 0, 0, 0];
+      if (data.containsKey('weeklySteps')) {
+        loadedWeekly = (data['weeklySteps'] as List).map((e) => e as int).toList();
+        storage.saveWeeklySteps(loadedWeekly.join(','));
+      }
+
+      // 3. Validate today's data using the exact date string format
+      final now = DateTime.now();
+      final firebaseDateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final localDateStr = '${now.year}-${now.month}-${now.day}';
+
+      int restoredSteps = 0;
+      if (data.containsKey('dailyHistory') && data['dailyHistory'][firebaseDateStr] != null) {
+        restoredSteps = data['dailyHistory'][firebaseDateStr] as int;
+        storage.saveSteps(restoredSteps);
+        storage.saveLastDate(localDateStr);
+
+        // Prevent double-counting coins on restore
+        storage.saveLastCoinStep((restoredSteps ~/ 100) * 100);
+      }
+
+      // 4. Update live UI state instantly
+      state = state.copyWith(
+        currentSteps: restoredSteps,
+        goalSteps: data['stepGoal'] ?? 10000,
+        coins: data['currentCoins'] ?? 0,
+        weeklySteps: loadedWeekly,
+        calories: restoredSteps * 0.04,
+        distanceKm: restoredSteps * 0.00075,
+      );
+
+    } catch (e) {
+      debugPrint('Firebase restore failed: $e');
     }
-    storage.saveWeeklySteps(weekly.join(','));
   }
 
 }

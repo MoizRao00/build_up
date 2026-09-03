@@ -74,6 +74,7 @@ class InsightsScreen extends ConsumerWidget {
             letterSpacing: .1,
           ),
         ),
+        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),

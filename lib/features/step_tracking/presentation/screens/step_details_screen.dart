@@ -1,3 +1,4 @@
+import 'package:build_up/app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -77,7 +78,7 @@ class _StepDetailsScreenState extends ConsumerState<StepDetailsScreen> {
               width: 65,
               margin: const EdgeInsets.only(right: 12),
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF10B981) : Colors.white.withOpacity(0.05),
+                color: isSelected ? AppColors.primaryEmerald : Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isSelected ? Colors.transparent : Colors.white.withOpacity(0.1),
@@ -248,7 +249,7 @@ class _StepDetailsScreenState extends ConsumerState<StepDetailsScreen> {
       barRods: [
         BarChartRodData(
           toY: y,
-          color: const Color(0xFF10B981),
+          color:AppColors.primaryEmerald,
           width: 16,
           borderRadius: BorderRadius.circular(4),
           backDrawRodData: BackgroundBarChartRodData(
@@ -298,7 +299,8 @@ class _StepDetailsScreenState extends ConsumerState<StepDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: const Color(0xFF10B981), size: 28),
+              Icon(icon, color:AppColors.primaryEmerald,
+                  size: 28),
               const SizedBox(height: 16),
               Text(
                 value,

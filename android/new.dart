@@ -1,1 +1,0 @@
-_syncStepsToFirestore(todaySteps);

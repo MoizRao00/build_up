@@ -27,7 +27,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
   final List<Widget> _screens = [
     const DashboardView(),
     InsightsScreen (),
-    const LeaderboardScreen(),
+     ChallengeScreen(),
     GpsTrackingScreen(),
     SettingsScreen(),
   ];

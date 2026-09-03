@@ -134,4 +134,14 @@ class LocalStorageService {
   int getStepGoal() {
     return _box.get('stepGoal', defaultValue: 10000);
   }
+  Future<void> clearAllUserData() async {
+    await _box.clear();
+  }
+  String getChallengeData() {
+    return _box.get('challenge_data', defaultValue: '{}');
+  }
+
+  void saveChallengeData(String data) {
+    _box.put('challenge_data', data);
+  }
 }

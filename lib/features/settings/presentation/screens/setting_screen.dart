@@ -1,3 +1,6 @@
+import 'package:build_up/features/settings/presentation/screens/tier_badge.dart';
+import 'package:build_up/features/settings/presentation/screens/tier_info_screen.dart';
+import 'package:build_up/features/shop/presentation/screens/store_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -28,190 +31,186 @@ class SettingsScreen extends ConsumerWidget {
     final displayName = profile?['name'] ?? profile?['displayName'] ?? 'Build Up User';
     final avatar = profile?['avatarUrl'] ?? '👦';
 
+    // Responsive sizing
+    final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+    final padding = screenWidth * 0.05;
+
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 32),
-              Center(
-                child: Column(
-                  children: [
-                    Container(
-                      height: 100,
-                      width: 100,
+      child: Scaffold(
+        body: Padding(
+          padding: EdgeInsets.all(padding),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: screenHeight * 0.04),
+      
+                Center(
+                  child: Column(
+                    children: [
+                      ProfileAvatarWithTier(
+                        avatarEmoji: avatar, 
+                        tier: stepState.currentLeague, 
+                        tierName: '${stepState.tierName}',
+                      ),
+                      
+                      SizedBox(height: screenHeight * 0.001),
+                      Text(
+                        displayName,
+                        style: GoogleFonts.sora(
+                          fontSize: screenWidth * 0.055,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      SizedBox(height: screenHeight * 0.00),
+                    ],
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.03),
+                GlassCard(
+                  padding: EdgeInsets.all(screenWidth * 0.02),
+                  child: ListTile(
+                    leading: Container(
+                      padding: EdgeInsets.all(screenWidth * 0.025),
                       decoration: BoxDecoration(
+                        color: AppColors.primaryEmerald.withOpacity(0.2),
                         shape: BoxShape.circle,
-                        color: const Color(0xFF1E293B),
-                        border: Border.all(
-                          color: AppColors.primaryEmerald,
-                          width: 2,
-                        ),
                       ),
-                      child: Center(
-                        child: Text(
-                          avatar,
-                          style: const TextStyle(fontSize: 50),
-                        ),
-                      ),
+                      child: Icon(Icons.edit, color: AppColors.primaryEmerald, size: screenWidth * 0.06),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      displayName,
+                    title: Text(
+                      'Edit Profile',
                       style: GoogleFonts.sora(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                        fontSize: screenWidth * 0.04,
+                        fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              GlassCard(
-                padding: const EdgeInsets.all(8),
-                child: ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryEmerald.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.edit, color: AppColors.primaryEmerald),
-                  ),
-                  title: Text(
-                    'Edit Profile',
-                    style: GoogleFonts.sora(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Avatar, Name, Step Goal',
-                    style: GoogleFonts.sora(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const EditProfileScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 24),
-              const ConditionalHealthNotice(),
-              const SizedBox(height: 24),
-              const Text(
-                'PREFERENCES',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              GlassCard(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.notifications, color: AppColors.primaryEmerald),
-                      title: const Text('Stand Alerts', style: TextStyle(color: AppColors.textPrimary)),
-                      trailing: Switch(
-                        value: true,
-                        onChanged: (bool value) {},
-                        activeColor: AppColors.primaryEmerald,
+                    subtitle: Text(
+                      'Avatar, Name, Step Goal',
+                      style: GoogleFonts.sora(
+                        fontSize: screenWidth * 0.03,
+                        color: AppColors.textSecondary,
                       ),
                     ),
-                    const Divider(color: Colors.white24),
-                    ListTile(
-                      leading: const Icon(Icons.timer, color: AppColors.primaryEmerald),
-                      title: const Text('Daily Walk Scheduler', style: TextStyle(color: AppColors.textPrimary)),
-                      trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const WalkSchedulerScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    const Divider(color: Colors.white24),
-                    ListTile(
-                      leading: const Icon(Icons.picture_as_pdf, color: AppColors.primaryEmerald),
-                      title: const Text('Export PDF Report', style: TextStyle(color: AppColors.textPrimary)),
-                      onTap: () {
-                        exportService.exportToPdf(
-                          stepState.currentSteps,
-                          stepState.calories,
-                          stepState.distanceKm,
-                        );
-                      },
-                    ),
-                    const Divider(color: Colors.white24),
-                    ListTile(
-                      leading: const Icon(Icons.table_chart, color: AppColors.primaryEmerald),
-                      title: const Text('Export CSV Data', style: TextStyle(color: AppColors.textPrimary)),
-                      onTap: () {
-                        exportService.exportToCsv(
-                          stepState.currentSteps,
-                          stepState.calories,
-                          stepState.distanceKm,
-                        );
-                      },
-                    ),
-                  ],
+                    trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary, size: screenWidth * 0.05),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EditProfileScreen(),
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'ACCOUNT',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textSecondary,
+      
+                SizedBox(height: screenHeight * 0.03),
+                const ConditionalHealthNotice(),
+                SizedBox(height: screenHeight * 0.01),
+                Text(
+                  'SETTINGS',
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.035,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              GlassCard(
-                padding: const EdgeInsets.all(16),
-                child: ListTile(
-                  leading: const Icon(Icons.logout, color: Colors.orangeAccent),
-                  title: const Text('Sign Out', style: TextStyle(color: AppColors.textPrimary)),
-                  onTap: () async {
-                    await authController.signOut();
-                  },
+                SizedBox(height: screenHeight * 0.015),
+                GlassCard(
+                  padding: EdgeInsets.all(screenWidth * 0.04),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: Icon(Icons.notifications, color: AppColors.primaryEmerald, size: screenWidth * 0.06),
+                        title: Text('Stand Alerts', style: TextStyle(color: AppColors.textPrimary, fontSize: screenWidth * 0.04)),
+                        trailing: Switch(
+                          value: true,
+                          onChanged: (bool value) {},
+                          activeColor: AppColors.primaryEmerald,
+                        ),
+                      ),
+                      const Divider(color: Colors.white24),
+                      ListTile(
+                        leading: Icon(Icons.storefront, color: AppColors.primaryEmerald, size: screenWidth * 0.06),
+                        title: Text('Store', style: TextStyle(color: AppColors.textPrimary, fontSize: screenWidth * 0.04)),
+                        trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary, size: screenWidth * 0.05),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const StoreScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const Divider(color: Colors.white24),
+                      ListTile(
+                        leading: Icon(Icons.timer, color: AppColors.primaryEmerald, size: screenWidth * 0.06),
+                        title: Text('Daily Walk Scheduler', style: TextStyle(color: AppColors.textPrimary, fontSize: screenWidth * 0.04)),
+                        trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary, size: screenWidth * 0.05),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const WalkSchedulerScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const Divider(color: Colors.white24),
+                      ListTile(
+                        leading: Icon(Icons.picture_as_pdf, color: AppColors.primaryEmerald, size: screenWidth * 0.06),
+                        title: Text('Export PDF Report', style: TextStyle(color: AppColors.textPrimary, fontSize: screenWidth * 0.04)),
+                        onTap: () {
+                          exportService.exportToPdf(
+                            stepState.currentSteps,
+                            stepState.calories,
+                            stepState.distanceKm,
+                          );
+                        },
+                      ),
+                      const Divider(color: Colors.white24),
+                      ListTile(
+                        leading: Icon(Icons.table_chart, color: AppColors.primaryEmerald, size: screenWidth * 0.06),
+                        title: Text('Export CSV Data', style: TextStyle(color: AppColors.textPrimary, fontSize: screenWidth * 0.04)),
+                        onTap: () {
+                          exportService.exportToCsv(
+                            stepState.currentSteps,
+                            stepState.calories,
+                            stepState.distanceKm,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'DANGER ZONE',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.redAccent,
+                SizedBox(height: screenHeight * 0.03),
+                Text(
+                  'ACCOUNT',
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.035,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              GlassCard(
-                padding: const EdgeInsets.all(16),
-                child: ListTile(
-                  leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
-                  title: const Text('Wipe All Data', style: TextStyle(color: Colors.redAccent)),
-                  onTap: () {},
+                SizedBox(height: screenHeight * 0.015),
+                GlassCard(
+                  padding: EdgeInsets.all(screenWidth * 0.04),
+                  child: ListTile(
+                    leading: Icon(Icons.logout, color: Colors.orangeAccent, size: screenWidth * 0.06),
+                    title: Text('Sign Out', style: TextStyle(color: AppColors.textPrimary, fontSize: screenWidth * 0.04)),
+                    onTap: () async {
+                      await authController.signOut();
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(height: 40),
-            ],
+      
+              ],
+            ),
           ),
         ),
       ),
@@ -243,8 +242,10 @@ class HealthConnectNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(screenWidth * 0.04),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(16),
@@ -253,36 +254,170 @@ class HealthConnectNotice extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
+          Icon(
             Icons.info_outline,
             color: AppColors.primaryEmerald,
-            size: 24,
+            size: screenWidth * 0.06,
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: screenWidth * 0.03),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
                   'Improve Step Accuracy',
                   style: TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 16,
+                    fontSize: screenWidth * 0.04,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                SizedBox(height: 4),
+                SizedBox(height: screenWidth * 0.01),
                 Text(
                   'For the most precise step tracking experience, download the Google Health Connect application from the Play Store.',
                   style: TextStyle(
                     color: AppColors.textSecondary,
-                    fontSize: 14,
+                    fontSize: screenWidth * 0.035,
                     height: 1.4,
                   ),
                 ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+
+class ProfileAvatarWithTier extends StatelessWidget {
+  final String avatarEmoji;
+  final LeagueTier tier;
+  final String tierName;
+  final bool showBadge;
+
+  const ProfileAvatarWithTier({
+    super.key,
+    required this.avatarEmoji,
+    required this.tier,
+    required this.tierName,
+    this.showBadge = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final avatarSize = screenWidth * 0.25;
+
+    Color tierColor = AppColors.primaryEmerald;
+    IconData tierIcon = Icons.star;
+
+    switch (tier) {
+      case LeagueTier.diamond:
+        tierColor = Colors.cyanAccent;
+        tierIcon = Icons.diamond;
+        break;
+      case LeagueTier.gold:
+        tierColor = Colors.amber;
+        tierIcon = Icons.military_tech;
+        break;
+      case LeagueTier.silver:
+        tierColor = const Color(0xFFC0C0C0);
+        tierIcon = Icons.shield;
+        break;
+      case LeagueTier.bronze:
+        tierColor = const Color(0xFFCD7F32);
+        tierIcon = Icons.star;
+        break;
+    }
+
+    return SizedBox(
+      width: avatarSize * 1.3,
+      height: showBadge ? avatarSize * 1.35 : avatarSize * 1.1,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        clipBehavior: Clip.none,
+        children: [
+          GestureDetector(
+            onTap: (){
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TierInfoScreen(),
+                ),
+              );
+            },
+            child: Container(
+              width: avatarSize,
+              height: avatarSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.textSecondary.withOpacity(0.1),
+                border: Border.all(
+                  color: tierColor,
+                  width: screenWidth * 0.008,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: tierColor.withOpacity(0.35),
+                    blurRadius: 16,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: Center(
+                  child: Text(
+                    avatarEmoji,
+                    style: TextStyle(fontSize: avatarSize * 0.6),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (showBadge)
+            Positioned(
+              bottom: 4,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenWidth * 0.035, 
+                  vertical: screenWidth * 0.015
+                ),
+                decoration: BoxDecoration(
+                  color: tierColor,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      tierIcon,
+                      color: Colors.black,
+                      size: screenWidth * 0.035,
+                    ),
+                    SizedBox(width: screenWidth * 0.01),
+                    Text(
+                      tierName.toUpperCase(),
+                      style: GoogleFonts.inter(
+                        color: Colors.black,
+                        fontSize: screenWidth * 0.025,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

@@ -134,7 +134,7 @@ class _WalkSchedulerScreenState extends ConsumerState<WalkSchedulerScreen> {
                       child: Text(
                         isScheduled ? 'Scheduled' : 'Set Reminder',
                         style: TextStyle(
-                          color: isScheduled ? AppColors.textSecondary : Colors.white,
+                          color: isScheduled ? AppColors.textSecondary : Colors.black,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),

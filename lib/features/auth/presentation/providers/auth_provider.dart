@@ -1,6 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+// Import your step provider here
+import '../../../../core/services/local_storage_service.dart';
+import '../../../step_tracking/presentation/providers/step_provider.dart';
 
 final firebaseAuthProvider = Provider<FirebaseAuth>((ref) {
   return FirebaseAuth.instance;
@@ -30,17 +33,22 @@ final authControllerProvider = Provider<AuthController>((ref) {
   return AuthController(
     ref.watch(firebaseAuthProvider),
     ref.watch(firestoreProvider),
+    ref,
   );
 });
 
 class AuthController {
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
+  final Ref _ref;
 
-  AuthController(this._auth, this._firestore);
+  AuthController(this._auth, this._firestore, this._ref);
 
   Future<void> signIn(String email, String password) async {
     await _auth.signInWithEmailAndPassword(email: email, password: password);
+
+    // This pulls data into Hive immediately after successful login
+    await _ref.read(stepNotifierProvider.notifier).restoreDataFromFirebase();
   }
 
   Future<void> signUp(String email, String password) async {
@@ -58,7 +66,7 @@ class AuthController {
         'displayName': displayName,
         'totalSteps': 0,
         'photoUrl': '',
-        'avatarUrl': '🤖',
+        'avatarUrl': '🙂',
       });
 
       await user.updateDisplayName(displayName);
@@ -67,8 +75,11 @@ class AuthController {
 
   Future<void> signOut() async {
     await _auth.signOut();
-  }
 
+    final storage = LocalStorageService();
+    await storage.init();
+    await storage.clearAllUserData();
+  }
   Future<void> resetPassword(String email) async {
     await _auth.sendPasswordResetEmail(email: email);
   }
