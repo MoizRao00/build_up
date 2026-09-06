@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:health/health.dart';
 import 'package:workmanager/workmanager.dart';
 import 'app/app.dart';
 import 'core/services/local_storage_service.dart';
@@ -17,14 +18,23 @@ void callbackDispatcher() {
 
     final storage = LocalStorageService();
     await storage.init();
+    final now = DateTime.now();
 
-    final nativeHealth = NativeHealthService();
-    int hardwareSteps = await nativeHealth.getHardwareSteps();
+    int hardwareSteps = 0;
+    final health = Health();
+    int? healthSteps = await health.getTotalStepsInInterval(DateTime(now.year, now.month, now.day), now);
+
+    if (healthSteps != null && healthSteps > 0) {
+      hardwareSteps = healthSteps;
+    } else {
+      final nativeHealth = NativeHealthService();
+      hardwareSteps = await nativeHealth.getHardwareSteps();
+    }
 
     if (hardwareSteps == 0) return Future.value(true);
 
-    final now = DateTime.now();
-    final dateStr = '${now.year}-${now.month}-${now.day}';
+
+    final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     String lastDate = storage.getLastDate();
     int baseline = storage.getHardwareBaseline();
 
@@ -42,16 +52,17 @@ void callbackDispatcher() {
       List<int> weekly = weeklyData.split(',').map((e) => int.tryParse(e) ?? 0).toList();
       if (weekly.length != 7) weekly = [0, 0, 0, 0, 0, 0, 0];
 
-      // Fixes the Monday Problem
-      if (now.weekday == DateTime.monday) {
-        weekly = [0, 0, 0, 0, 0, 0, 0];
-      } else {
-        weekly[now.weekday - 1] = 0;
-      }
+
+      weekly[now.weekday - 1] = 0;
       storage.saveWeeklySteps(weekly.join(','));
     }
 
-    // 2. Calculate Actual Steps
+    if (baseline > 0 && hardwareSteps < baseline) {
+      int savedStepsToday = storage.getSteps();
+      int newBaseline = -savedStepsToday;
+      storage.saveHardwareBaseline(newBaseline);
+      baseline = newBaseline;
+    }
     int todaySteps = hardwareSteps - baseline;
 
     if (todaySteps < 0) {

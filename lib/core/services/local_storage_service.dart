@@ -59,8 +59,8 @@ class LocalStorageService {
   }
 
   List<String> getPurchasedThemes() {
-    return _box.get(
-        'purchasedThemes', defaultValue: <String>['default']) as List<String>;
+    final data = _box.get('purchasedThemes', defaultValue: ['default']);
+    return List<String>.from(data);
   }
 
   void savePurchasedThemes(List<String> themes) {
