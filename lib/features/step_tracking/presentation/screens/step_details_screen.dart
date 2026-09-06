@@ -19,6 +19,27 @@ class _StepDetailsScreenState extends ConsumerState<StepDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final stepState = ref.watch(stepNotifierProvider);
+    final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+
+    // Logic to calculate dates for the selector (last 7 days ending today)
+    final now = DateTime.now();
+    final List<DateTime> weekDays = List.generate(
+      7,
+      (index) => now.subtract(Duration(days: 6 - index)),
+    );
+    
+    final selectedDate = weekDays[_selectedDateIndex];
+    
+    // Fetch steps: if today (index 6), use current live steps; otherwise pull from weekly history array.
+    // Index in weeklySteps is weekday - 1 (0=Mon, 6=Sun)
+    int displaySteps = (_selectedDateIndex == 6) 
+        ? stepState.currentSteps 
+        : stepState.weeklySteps[selectedDate.weekday - 1];
+    
+    double displayDistance = displaySteps * 0.00075;
+    double displayCalories = displaySteps * 0.04;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
@@ -30,36 +51,34 @@ class _StepDetailsScreenState extends ConsumerState<StepDetailsScreen> {
           'ACTIVITY DETAILS',
           style: GoogleFonts.inter(
             color: Colors.white,
-            fontSize: 16,
+            fontSize: screenWidth * 0.045,
             fontWeight: FontWeight.bold,
             letterSpacing: 1.5,
           ),
         ),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            _buildWeeklySelector(),
-            const SizedBox(height: 20),
-            _buildChartCard(stepState.currentSteps.toDouble()),
-            const SizedBox(height: 20),
-            _buildSummaryStats(stepState.distanceKm, stepState.calories),
-          ],
+        padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              SizedBox(height: screenHeight * 0.02),
+              _buildWeeklySelector(weekDays, screenWidth),
+              SizedBox(height: screenHeight * 0.03),
+              _buildChartCard(displaySteps.toDouble(), screenWidth, screenHeight),
+              SizedBox(height: screenHeight * 0.03),
+              _buildSummaryStats(displayDistance, displayCalories, screenWidth),
+              SizedBox(height: screenHeight * 0.05),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildWeeklySelector() {
-    final now = DateTime.now();
-    final List<DateTime> weekDays = List.generate(
-      7,
-          (index) => now.subtract(Duration(days: 6 - index)),
-    );
-
+  Widget _buildWeeklySelector(List<DateTime> weekDays, double screenWidth) {
     return SizedBox(
-      height: 80,
+      height: 85,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: 7,
@@ -69,14 +88,10 @@ class _StepDetailsScreenState extends ConsumerState<StepDetailsScreen> {
           final dayName = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date.weekday - 1];
 
           return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedDateIndex = index;
-              });
-            },
+            onTap: () => setState(() => _selectedDateIndex = index),
             child: Container(
-              width: 65,
-              margin: const EdgeInsets.only(right: 12),
+              width: screenWidth * 0.16,
+              margin: EdgeInsets.only(right: screenWidth * 0.03),
               decoration: BoxDecoration(
                 color: isSelected ? AppColors.primaryEmerald : Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(20),
@@ -91,7 +106,7 @@ class _StepDetailsScreenState extends ConsumerState<StepDetailsScreen> {
                     dayName,
                     style: GoogleFonts.inter(
                       color: isSelected ? Colors.black : Colors.white54,
-                      fontSize: 12,
+                      fontSize: screenWidth * 0.03,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -100,7 +115,7 @@ class _StepDetailsScreenState extends ConsumerState<StepDetailsScreen> {
                     date.day.toString(),
                     style: GoogleFonts.inter(
                       color: isSelected ? Colors.black : Colors.white,
-                      fontSize: 18,
+                      fontSize: screenWidth * 0.045,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -113,18 +128,17 @@ class _StepDetailsScreenState extends ConsumerState<StepDetailsScreen> {
     );
   }
 
-  Widget _buildChartCard(double currentSteps) {
+  Widget _buildChartCard(double steps, double screenWidth, double screenHeight) {
     int currentHour = DateTime.now().hour;
-    int activeIndex = 0;
+    int activeIndex = -1;
 
-    if (currentHour >= 22) {
-      activeIndex = 4;
-    } else if (currentHour >= 18) {
-      activeIndex = 3;
-    } else if (currentHour >= 14) {
-      activeIndex = 2;
-    } else if (currentHour >= 10) {
-      activeIndex = 1;
+    // For Today (index 6), highlight the bar for the current time slot
+    if (_selectedDateIndex == 6) {
+      if (currentHour >= 22) activeIndex = 4;
+      else if (currentHour >= 18) activeIndex = 3;
+      else if (currentHour >= 14) activeIndex = 2;
+      else if (currentHour >= 10) activeIndex = 1;
+      else if (currentHour >= 6) activeIndex = 0;
     }
 
     return ClipRRect(
@@ -132,8 +146,8 @@ class _StepDetailsScreenState extends ConsumerState<StepDetailsScreen> {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
         child: Container(
-          height: 300,
-          padding: const EdgeInsets.all(20),
+          height: screenHeight * 0.35,
+          padding: EdgeInsets.all(screenWidth * 0.05),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.05),
             borderRadius: BorderRadius.circular(24),
@@ -143,14 +157,14 @@ class _StepDetailsScreenState extends ConsumerState<StepDetailsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _selectedDateIndex == 6 ? 'Steps Today' : 'Steps History',
+                _selectedDateIndex == 6 ? 'Steps Today' : 'Daily Progress',
                 style: GoogleFonts.inter(
                   color: Colors.white54,
-                  fontSize: 14,
+                  fontSize: screenWidth * 0.035,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 25),
               Expanded(
                 child: BarChart(
                   BarChartData(
@@ -164,36 +178,31 @@ class _StepDetailsScreenState extends ConsumerState<StepDetailsScreen> {
                           showTitles: true,
                           getTitlesWidget: (value, meta) {
                             const style = TextStyle(color: Colors.white54, fontSize: 10);
-                            String text;
-                            switch (value.toInt()) {
-                              case 0: text = '6AM'; break;
-                              case 1: text = '10AM'; break;
-                              case 2: text = '2PM'; break;
-                              case 3: text = '6PM'; break;
-                              case 4: text = '10PM'; break;
-                              default: text = '';
+                            String text = '';
+                            if (_selectedDateIndex == 6) {
+                              switch (value.toInt()) {
+                                case 0: text = '6AM'; break;
+                                case 1: text = '10AM'; break;
+                                case 2: text = '2PM'; break;
+                                case 3: text = '6PM'; break;
+                                case 4: text = '10PM'; break;
+                              }
+                            } else {
+                              // For history, we just show one main indicator or labels for a single bar
+                              if (value == 2) text = 'TOTAL';
                             }
-                            return SideTitleWidget(
-                              meta: meta,
-                              child: Text(text, style: style),
-                            );
+                            return SideTitleWidget(meta: meta, child: Text(text, style: style));
                           },
                         ),
                       ),
                       leftTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
-                          reservedSize: 40,
-                          getTitlesWidget: (value, meta) {
-                            if (value == 0) return const SizedBox.shrink();
-                            return SideTitleWidget(
-                              meta: meta,
-                              child: Text(
-                                value.toInt().toString(),
-                                style: const TextStyle(color: Colors.white54, fontSize: 10),
-                              ),
-                            );
-                          },
+                          reservedSize: 35,
+                          getTitlesWidget: (value, meta) => SideTitleWidget(
+                            meta: meta,
+                            child: Text(value.toInt().toString(), style: const TextStyle(color: Colors.white54, fontSize: 9)),
+                          ),
                         ),
                       ),
                       topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -201,37 +210,17 @@ class _StepDetailsScreenState extends ConsumerState<StepDetailsScreen> {
                     ),
                     gridData: FlGridData(
                       show: true,
-                      drawVerticalLine: false,
                       horizontalInterval: 2500,
-                      getDrawingHorizontalLine: (value) {
-                        return FlLine(
-                          color: Colors.white.withOpacity(0.1),
-                          strokeWidth: 1,
-                          dashArray: [5, 5],
-                        );
-                      },
-                    ),
-                    borderData: FlBorderData(
-                      show: true,
-                      border: Border(
-                        bottom: BorderSide(
-                          color: Colors.white.withOpacity(0.2),
-                          width: 1,
-                        ),
-                        left: BorderSide(
-                          color: Colors.white.withOpacity(0.2),
-                          width: 1,
-                        ),
-                        top: BorderSide.none,
-                        right: BorderSide.none,
-                      ),
+                      getDrawingHorizontalLine: (value) => FlLine(color: Colors.white.withOpacity(0.05), strokeWidth: 1),
                     ),
                     barGroups: [
-                      _buildBar(0, _selectedDateIndex == 6 && activeIndex == 0 ? currentSteps : 0),
-                      _buildBar(1, _selectedDateIndex == 6 && activeIndex == 1 ? currentSteps : 0),
-                      _buildBar(2, _selectedDateIndex == 6 && activeIndex == 2 ? currentSteps : 0),
-                      _buildBar(3, _selectedDateIndex == 6 && activeIndex == 3 ? currentSteps : 0),
-                      _buildBar(4, _selectedDateIndex == 6 && activeIndex == 4 ? currentSteps : 0),
+                      // If it's a history day, we show one large bar in the middle. 
+                      // If it's today, we show progress in the current time slot.
+                      _buildBar(0, (_selectedDateIndex == 6 && activeIndex == 0) ? steps : 0, screenWidth),
+                      _buildBar(1, (_selectedDateIndex == 6 && activeIndex == 1) ? steps : 0, screenWidth),
+                      _buildBar(2, (_selectedDateIndex != 6) ? steps : ((activeIndex == 2) ? steps : 0), screenWidth),
+                      _buildBar(3, (_selectedDateIndex == 6 && activeIndex == 3) ? steps : 0, screenWidth),
+                      _buildBar(4, (_selectedDateIndex == 6 && activeIndex == 4) ? steps : 0, screenWidth),
                     ],
                   ),
                 ),
@@ -243,54 +232,38 @@ class _StepDetailsScreenState extends ConsumerState<StepDetailsScreen> {
     );
   }
 
-  BarChartGroupData _buildBar(int x, double y) {
+  BarChartGroupData _buildBar(int x, double y, double screenWidth) {
     return BarChartGroupData(
       x: x,
       barRods: [
         BarChartRodData(
           toY: y,
-          color:AppColors.primaryEmerald,
-          width: 16,
+          color: AppColors.primaryEmerald,
+          width: screenWidth * 0.045,
           borderRadius: BorderRadius.circular(4),
-          backDrawRodData: BackgroundBarChartRodData(
-            show: true,
-            toY: 10000,
-            color: Colors.white.withOpacity(0.05),
-          ),
+          backDrawRodData: BackgroundBarChartRodData(show: true, toY: 10000, color: Colors.white.withOpacity(0.05)),
         ),
       ],
     );
   }
 
-  Widget _buildSummaryStats(double distance, double calories) {
+  Widget _buildSummaryStats(double distance, double calories, double screenWidth) {
     return Row(
       children: [
-        Expanded(
-          child: _buildGlassStatCard(
-            'DISTANCE',
-            _selectedDateIndex == 6 ? '${distance.toStringAsFixed(2)} km' : '0.00 km',
-            Icons.map_outlined,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildGlassStatCard(
-            'CALORIES',
-            _selectedDateIndex == 6 ? '${calories.toStringAsFixed(0)} kcal' : '0 kcal',
-            Icons.local_fire_department_outlined,
-          ),
-        ),
+        Expanded(child: _buildGlassStatCard('DISTANCE', '${distance.toStringAsFixed(2)} km', Icons.map_outlined, screenWidth)),
+        SizedBox(width: screenWidth * 0.04),
+        Expanded(child: _buildGlassStatCard('CALORIES', '${calories.toStringAsFixed(0)} kcal', Icons.local_fire_department_outlined, screenWidth)),
       ],
     );
   }
 
-  Widget _buildGlassStatCard(String title, String value, IconData icon) {
+  Widget _buildGlassStatCard(String title, String value, IconData icon, double screenWidth) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(screenWidth * 0.05),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.05),
             borderRadius: BorderRadius.circular(24),
@@ -299,27 +272,11 @@ class _StepDetailsScreenState extends ConsumerState<StepDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color:AppColors.primaryEmerald,
-                  size: 28),
-              const SizedBox(height: 16),
-              Text(
-                value,
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              Icon(icon, color: AppColors.primaryEmerald, size: screenWidth * 0.075),
+              const SizedBox(height: 12),
+              Text(value, style: GoogleFonts.inter(color: Colors.white, fontSize: screenWidth * 0.055, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text(
-                title,
-                style: GoogleFonts.inter(
-                  color: Colors.white54,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                ),
-              ),
+              Text(title, style: GoogleFonts.inter(color: Colors.white54, fontSize: screenWidth * 0.025, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
             ],
           ),
         ),

@@ -7,7 +7,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/services/permission_service.dart';
 import '../../../../core/services/local_storage_service.dart';
-import '../../../settings/presentation/screens/setting_screen.dart';
+import '../../../settings/presentation/setting_screen.dart';
 import '../../../shop/presentation/screens/store_screen.dart';
 import '../../../social/presentation/screens/social_screen.dart';
 import '../../../step_tracking/presentation/providers/step_provider.dart';

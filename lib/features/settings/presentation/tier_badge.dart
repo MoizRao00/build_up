@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../step_tracking/presentation/providers/step_provider.dart';
+import '../../step_tracking/presentation/providers/step_provider.dart';
 
 
 class LeagueTierBadge extends StatelessWidget {

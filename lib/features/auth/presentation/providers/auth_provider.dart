@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-// Import your step provider here
+import 'package:google_sign_in/google_sign_in.dart' as g_sign_in;
 import '../../../../core/services/local_storage_service.dart';
 import '../../../step_tracking/presentation/providers/step_provider.dart';
 
@@ -11,6 +11,11 @@ final firebaseAuthProvider = Provider<FirebaseAuth>((ref) {
 
 final firestoreProvider = Provider<FirebaseFirestore>((ref) {
   return FirebaseFirestore.instance;
+});
+
+// Use a notification_provider for GoogleSignIn with correct configuration
+final googleSignInProvider = Provider<g_sign_in.GoogleSignIn>((ref) {
+  return g_sign_in.GoogleSignIn.instance;
 });
 
 final authStateProvider = StreamProvider<User?>((ref) {
@@ -33,6 +38,7 @@ final authControllerProvider = Provider<AuthController>((ref) {
   return AuthController(
     ref.watch(firebaseAuthProvider),
     ref.watch(firestoreProvider),
+    ref.watch(googleSignInProvider),
     ref,
   );
 });
@@ -40,18 +46,78 @@ final authControllerProvider = Provider<AuthController>((ref) {
 class AuthController {
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
+  final g_sign_in.GoogleSignIn _googleSignIn;
   final Ref _ref;
 
-  AuthController(this._auth, this._firestore, this._ref);
+  AuthController(this._auth, this._firestore, this._googleSignIn, this._ref);
 
   Future<void> signIn(String email, String password) async {
     await _auth.signInWithEmailAndPassword(email: email, password: password);
-
-    // This pulls data into Hive immediately after successful login
     await _ref.read(stepNotifierProvider.notifier).restoreDataFromFirebase();
   }
 
-  Future<void> signUp(String email, String password) async {
+  Future<void> signInAnonymously() async {
+    final userCredential = await _auth.signInAnonymously();
+    final user = userCredential.user;
+    if (user != null) {
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      if (!doc.exists) {
+        await _firestore.collection('users').doc(user.uid).set({
+          'name': 'Guest User',
+          'displayName': 'Guest User',
+          'totalSteps': 0,
+          'photoUrl': '',
+          'avatarUrl': '👤',
+          'isGuest': true,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+    }
+  }
+
+  Future<void> signInWithGoogle() async {
+    try {
+      // 2. You must call initialize() first in version 7
+      await _googleSignIn.initialize();
+
+      // 3. Use authenticate() instead of signIn()
+      final g_sign_in.GoogleSignInAccount? googleUser = await _googleSignIn.authenticate();
+      if (googleUser == null) return;
+
+      // 4. Request the access token separately via authorizationClient
+      final clientAuth = await googleUser.authorizationClient?.authorizeScopes(['email', 'profile']);
+      if (clientAuth == null) return;
+
+      final g_sign_in.GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      // 5. Combine the access token (from clientAuth) and id token (from googleAuth)
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: clientAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential = await _auth.signInWithCredential(credential);
+      final user = userCredential.user;
+
+      if (user != null) {
+        final doc = await _firestore.collection('users').doc(user.uid).get();
+        if (!doc.exists) {
+          await _firestore.collection('users').doc(user.uid).set({
+            'name': user.displayName ?? 'Google User',
+            'displayName': user.displayName ?? 'Google User',
+            'totalSteps': 0,
+            'photoUrl': user.photoURL ?? '',
+            'avatarUrl': '🌟',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+        await _ref.read(stepNotifierProvider.notifier).restoreDataFromFirebase();
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+  Future<void> signUp(String email, String password, String name) async {
     final userCredential = await _auth.createUserWithEmailAndPassword(
       email: email,
       password: password,
@@ -59,27 +125,27 @@ class AuthController {
 
     final user = userCredential.user;
     if (user != null) {
-      final displayName = email.split('@').first;
-
       await _firestore.collection('users').doc(user.uid).set({
-        'name': displayName,
-        'displayName': displayName,
+        'name': name,
+        'displayName': name,
         'totalSteps': 0,
         'photoUrl': '',
         'avatarUrl': '🙂',
+        'createdAt': FieldValue.serverTimestamp(),
       });
 
-      await user.updateDisplayName(displayName);
+      await user.updateDisplayName(name);
     }
   }
-
   Future<void> signOut() async {
     await _auth.signOut();
-
+    // 6. Use the instance here as well
+    await g_sign_in.GoogleSignIn.instance.signOut();
     final storage = LocalStorageService();
     await storage.init();
     await storage.clearAllUserData();
   }
+
   Future<void> resetPassword(String email) async {
     await _auth.sendPasswordResetEmail(email: email);
   }

@@ -60,7 +60,7 @@ class ChallengeCard extends ConsumerWidget {
         border: Border.all(
           color: challenge.isFailed
               ? Colors.redAccent.withOpacity(0.5)
-              : AppColors.primaryEmerald.withOpacity(0.6),
+              : AppColors.primaryEmerald.withOpacity(0.0),
           width: 1.5,
         ),
       ),
@@ -69,115 +69,73 @@ class ChallengeCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: size.width * 0.02,
-                  vertical: size.height * 0.006,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B).withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  children: [
-                    Icon(badgeIcon, color: badgeColor, size: size.width * 0.03),
-                    SizedBox(width: size.width * 0.01),
-                    Text(
-                      badgeText,
-                      style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontSize: labelFontSize * 1.3,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              Row(
-                children: [
-                  Text(
-                    challenge.isActive ? 'ACTIVE' : 'START',
-                    style: GoogleFonts.inter(
-                      color: challenge.isActive
-                          ? AppColors.primaryEmerald
-                          : AppColors.textSecondary,
-                      fontSize: size.width * 0.032,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                  Transform.scale(
-                    scale: 0.8,
-                    child: CupertinoSwitch(
-                      value: challenge.isActive,
-                      activeColor: AppColors.primaryEmerald,
-                      trackColor: Colors.white.withOpacity(0.15),
-                      thumbColor: Colors.white,
-                      onChanged: (bool value) {
-                        if (value) {
-                          ref
-                              .read(challengeProvider.notifier)
-                              .startChallenge(challenge.id);
-                        } else {
-                          ref
-                              .read(challengeProvider.notifier)
-                              .stopChallenge(challenge.id);
-                        }
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          SizedBox(height: size.height * 0.015),
-          Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Left Column: Title, Coins, and Steps
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // title and time left
+                    Row(
+                      children: [
+                        Text(
+                          challenge.title,
+                          style: GoogleFonts.sora(
+                            color: AppColors.textPrimary,
+                            fontSize: titleFontSize / 1.2,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        Spacer(),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: size.width * 0.001,
+                            vertical: size.height * 0.006,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                badgeIcon,
+                                color: badgeColor,
+                                size: size.width * 0.03,
+                              ),
+                              SizedBox(width: size.width * 0.01),
+                              Text(
+                                badgeText,
+                                style: GoogleFonts.inter(
+                                  color: Colors.white,
+                                  fontSize: labelFontSize * 1.3,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              SizedBox(width: size.width * .009),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    //subtitle
                     Text(
-                      challenge.title,
-                      style: GoogleFonts.inter(
-                        color: AppColors.textPrimary,
-                        fontSize: titleFontSize,
+                      challenge.subtitle,
+                      style: GoogleFonts.sora(
+                        color: AppColors.textSecondary,
+                        fontSize: titleFontSize / 2.5,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    if (!challenge.isCompleted && !challenge.isFailed) ...[
-                      SizedBox(height: size.height * 0.008),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: size.width * 0.025,
-                          vertical: size.height * 0.006,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryEmerald.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '+${_formatNumber(challenge.rewardCoins)} COINS',
-                          style: GoogleFonts.inter(
-                            color: AppColors.primaryEmerald,
-                            fontSize: size.width * 0.028,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ],
-                    SizedBox(height: size.height * 0.00),
+                    SizedBox(height: size.height * 0.002),
+                    //steps progress
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
                       children: [
-                        SizedBox(width: size.width * 0.02),
+                        SizedBox(width: size.width * 0.012),
                         Text(
                           _formatNumber(challenge.currentSteps),
                           style: GoogleFonts.inter(
@@ -194,48 +152,52 @@ class ChallengeCard extends ConsumerWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
+                        Spacer(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  challenge.isActive ? 'ACTIVE' : 'START',
+                                  style: GoogleFonts.inter(
+                                    color: challenge.isActive
+                                        ? AppColors.primaryEmerald
+                                        : AppColors.textSecondary,
+                                    fontSize: size.width * 0.032,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                                Transform.scale(
+                                  scale: 0.8,
+                                  child: CupertinoSwitch(
+                                    value: challenge.isActive,
+                                    activeColor: AppColors.primaryEmerald,
+                                    trackColor: Colors.white.withOpacity(0.15),
+                                    thumbColor: Colors.white,
+                                    onChanged: (bool value) {
+                                      if (value) {
+                                        ref
+                                            .read(challengeProvider.notifier)
+                                            .startChallenge(challenge.id);
+                                      } else {
+                                        ref
+                                            .read(challengeProvider.notifier)
+                                            .stopChallenge(challenge.id);
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ],
                 ),
               ),
-
-              // Right Side: Circular Progress Indicator
-              if (challenge.isActive || challenge.isCompleted) ...[
-                SizedBox(width: size.width * 0.04),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: SizedBox(
-                    width: size.width * 0.18,
-                    height: size.width * 0.18,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        CircularProgressIndicator(
-                          value: challenge.progress,
-                          strokeWidth: 8,
-                          backgroundColor: Colors.white.withOpacity(0.1),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            challenge.isCompleted
-                                ? Colors.grey
-                                : AppColors.primaryEmerald,
-                          ),
-                        ),
-                        Center(
-                          child: Text(
-                            '${(challenge.progress * 100).toInt()}%',
-                            style: GoogleFonts.inter(
-                              color: AppColors.textPrimary,
-                              fontSize: size.width * 0.042,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
         ],

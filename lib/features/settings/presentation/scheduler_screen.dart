@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../app/theme/app_colors.dart';
-import '../../../../core/provider/notification_provider.dart';
-import '../../../step_tracking/presentation/widgets/glass_step_card.dart';
+import '../../../app/theme/app_colors.dart';
+import '../../../core/notification_provider/notification_provider.dart';
+import '../../step_tracking/presentation/widgets/glass_step_card.dart';
 
 class WalkSchedulerScreen extends ConsumerStatefulWidget {
   const WalkSchedulerScreen({super.key});

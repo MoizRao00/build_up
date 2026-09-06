@@ -1,17 +1,17 @@
-import 'package:build_up/features/settings/presentation/screens/tier_badge.dart';
-import 'package:build_up/features/settings/presentation/screens/tier_info_screen.dart';
+import 'package:build_up/features/settings/presentation/tier_badge.dart';
+import 'package:build_up/features/settings/presentation/tier_info_screen.dart';
 import 'package:build_up/features/shop/presentation/screens/store_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../../../app/theme/app_colors.dart';
-import '../../../step_tracking/presentation/providers/step_provider.dart';
-import '../../../../core/utils/export_service.dart';
+import '../../../app/theme/app_colors.dart';
+import '../../step_tracking/presentation/providers/step_provider.dart';
+import '../../../core/utils/export_service.dart';
 
-import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../../core/services/native_health_service.dart';
-import '../../../step_tracking/presentation/widgets/glass_step_card.dart';
+import '../../auth/presentation/providers/auth_provider.dart';
+import '../../../core/services/native_health_service.dart';
+import '../../step_tracking/presentation/widgets/glass_step_card.dart';
 import 'scheduler_screen.dart';
 import 'edit_profile_screen.dart';
 

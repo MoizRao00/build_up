@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../step_tracking/presentation/providers/step_provider.dart';
-import '../../domain/models/badge_model.dart';
+import '../../models/badge_model.dart';
 
 class StreakState {
   final int currentStreak;

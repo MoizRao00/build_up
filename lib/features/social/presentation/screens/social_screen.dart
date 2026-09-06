@@ -197,6 +197,46 @@ class ChallengeScreen extends ConsumerWidget {
                 ),
               ),
               SizedBox(height: verticalSpacing),
+              SizedBox(height: verticalSpacing/2),
+              Padding(
+                padding:  EdgeInsets.fromLTRB(horizontalPadding* 1.5, 0, horizontalPadding*1.5, 0),
+                child: Row(
+                  mainAxisAlignment: .spaceBetween,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      'Active',
+                      style: GoogleFonts.sora(
+                        fontSize: titleFontSize,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AllChallengesScreen(),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        'VIEW All',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: titleFontSize/2,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: verticalSpacing/2),
+
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                 child: Column(
@@ -209,35 +249,16 @@ class ChallengeScreen extends ConsumerWidget {
                 ),
               ),
               SizedBox(height: size.height * 0.00),
-              Center(
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AllChallengesScreen(),
-                      ),
-                    );
-                  },
-                  child: Text(
-                    'VIEW ALL CHALLENGES   ',
-                    style: GoogleFonts.inter(
-                      color: AppColors.primaryEmerald,
-                      fontWeight: FontWeight.w700,
-                      fontSize: buttonFontSize,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
               SizedBox(height: size.height * 0.001),
-              Text(
-                'STEP RACE',
-                style: GoogleFonts.inter(
-                  fontSize: titleFontSize,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary,
-                  letterSpacing: 1.2,
+              Center(
+                child: Text(
+                  'STEP RACE',
+                  style: GoogleFonts.inter(
+                    fontSize: titleFontSize,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                    letterSpacing: 1.2,
+                  ),
                 ),
               ),
               SizedBox(height: verticalSpacing),

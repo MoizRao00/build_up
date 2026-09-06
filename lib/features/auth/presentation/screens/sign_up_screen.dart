@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -20,39 +21,73 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   bool _obscurePassword = true;
   bool _agreeToTerms = false;
 
+  void _showCustomSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message.toUpperCase(),
+          textAlign: TextAlign.center,
+          style: GoogleFonts.sora(
+            color: isError ? Colors.white : AppColors.backgroundDark,
+            fontWeight: FontWeight.w900,
+            fontSize: 14,
+            letterSpacing: 1.2,
+          ),
+        ),
+        backgroundColor: isError ? Colors.redAccent : AppColors.primaryEmerald,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        elevation: 8,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   Future<void> _submitSignUp() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final name = _nameController.text.trim();
 
     if (name.isEmpty || email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Please fill in all fields'),
-            backgroundColor: Colors.redAccent),
-      );
+      _showCustomSnackBar('Please fill in all fields', isError: true);
       return;
     }
 
     if (!_agreeToTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('You must agree to the terms and conditions'),
-            backgroundColor: Colors.redAccent),
-      );
+      _showCustomSnackBar('You must agree to the terms', isError: true);
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      await ref.read(authControllerProvider).signUp(email, password);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(e.toString()), backgroundColor: Colors.redAccent),
-        );
+      await ref.read(authControllerProvider).signUp(email, password, name);
+      _showCustomSnackBar('Account created successfully');
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+      switch (e.code) {
+        case 'email-already-in-use':
+          errorMessage = 'Email already in use';
+          break;
+        case 'invalid-email':
+          errorMessage = 'Invalid email address';
+          break;
+        case 'weak-password':
+          errorMessage = 'Password is too weak';
+          break;
+        case 'operation-not-allowed':
+          errorMessage = 'Operation not allowed';
+          break;
+        default:
+          errorMessage = e.message ?? 'Registration failed';
       }
+      _showCustomSnackBar(errorMessage, isError: true);
+    } catch (e) {
+      _showCustomSnackBar('An unexpected error occurred', isError: true);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -114,7 +149,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
-
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -125,7 +159,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-
                     const SizedBox(width: 8),
                     Text(
                       'BUILD UP',

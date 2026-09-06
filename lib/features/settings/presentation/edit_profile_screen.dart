@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../../../app/theme/app_colors.dart';
+import '../../../app/theme/app_colors.dart';
 
-import '../../../step_tracking/presentation/providers/step_provider.dart';
-import '../../../step_tracking/presentation/widgets/glass_step_card.dart';
+import '../../step_tracking/presentation/providers/step_provider.dart';
+import '../../step_tracking/presentation/widgets/glass_step_card.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});

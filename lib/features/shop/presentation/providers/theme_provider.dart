@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/services/local_storage_service.dart';
 import '../../../step_tracking/presentation/providers/step_provider.dart';
 
 class ThemeState {

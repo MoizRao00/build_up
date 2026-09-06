@@ -1,5 +1,5 @@
 import 'dart:ui';
-import 'package:build_up/features/settings/presentation/screens/setting_screen.dart';
+import 'package:build_up/features/settings/presentation/setting_screen.dart';
 import 'package:build_up/features/shop/presentation/screens/store_screen.dart';
 import 'package:build_up/features/step_tracking/presentation/screens/route_history_screen.dart';
 import 'package:build_up/features/step_tracking/presentation/screens/step_details_screen.dart';

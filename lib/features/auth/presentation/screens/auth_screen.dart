@@ -20,29 +20,83 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
 
+  void _showCustomSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message.toUpperCase(),
+          textAlign: TextAlign.center,
+          style: GoogleFonts.sora(
+            color: isError ? Colors.white : AppColors.backgroundDark,
+            fontWeight: FontWeight.w900,
+            fontSize: 14,
+            letterSpacing: 1.2,
+          ),
+        ),
+        backgroundColor: isError ? Colors.redAccent : AppColors.primaryEmerald,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        elevation: 8,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   Future<void> _submitLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Please enter both email and password'),
-            backgroundColor: Colors.redAccent),
-      );
+      _showCustomSnackBar('Please enter both email and password', isError: true);
       return;
     }
 
     setState(() => _isLoading = true);
     try {
       await ref.read(authControllerProvider).signIn(email, password);
+      _showCustomSnackBar('Login Successful');
     } catch (e) {
+      String errorMessage = 'An error occurred';
+      if (e.toString().contains('user-not-found')) errorMessage = 'User not found';
+      else if (e.toString().contains('wrong-password')) errorMessage = 'Incorrect password';
+      else if (e.toString().contains('invalid-email')) errorMessage = 'Invalid email address';
+      else errorMessage = e.toString().replaceAll('Exception:', '').trim();
+
+      _showCustomSnackBar(errorMessage, isError: true);
+    } finally {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(e.toString()), backgroundColor: Colors.redAccent),
-        );
+        setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _submitGoogleSignIn() async {
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(authControllerProvider).signInWithGoogle();
+      _showCustomSnackBar('Google Login Successful');
+    } catch (e) {
+      print(e.toString());
+      _showCustomSnackBar('Failed: ${e.toString()}', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+  Future<void> _submitGuestLogin() async {
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(authControllerProvider).signInAnonymously();
+      _showCustomSnackBar('Welcome Guest');
+    } catch (e) {
+      print(e.toString());
+      _showCustomSnackBar('Failed: ${e.toString()}', isError: true);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -65,7 +119,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     );
   }
 
-  void _showForgotPasswordDialog() {
+  void _showForgotPasswordDialog()
+  {
 
     final resetEmailController = TextEditingController(text: _emailController.text);
 
@@ -122,44 +177,20 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   child: ElevatedButton(
                     onPressed: () async {
                       final email = resetEmailController.text.trim();
-                      if (email.isEmpty) return;
+                      if (email.isEmpty) {
+                        _showCustomSnackBar('Enter email for reset', isError: true);
+                        return;
+                      }
 
                       try {
                         await ref.read(authControllerProvider).resetPassword(email);
                         if (context.mounted) {
                           Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Password reset link sent to your email.',
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.sora(
-                                  color: AppColors.backgroundDark,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 14,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                              backgroundColor: AppColors.primaryEmerald,
-                              behavior: SnackBarBehavior.floating,
-                              margin: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              elevation: 8,
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
-
+                          _showCustomSnackBar('Reset link sent to your email');
                         }
                       } catch (e) {
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(e.toString()),
-                              backgroundColor: Colors.redAccent,
-                            ),
-                          );
+                          _showCustomSnackBar(e.toString(), isError: true);
                         }
                       }
                     },
@@ -309,7 +340,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         const Center(
                             child: CircularProgressIndicator(
                                 color: AppColors.primaryEmerald))
-                      else
+                      else ...[
                         SizedBox(
                           width: double.infinity,
                           height: 56,
@@ -332,113 +363,81 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                             ),
                           ),
                         ),
-                      const SizedBox(height: 32),
-                      // Row(
-                      //   children: [
-                      //     Expanded(
-                      //         child: Divider(
-                      //             color: Colors.white.withOpacity(0.1))),
-                      //     Padding(
-                      //       padding:
-                      //       const EdgeInsets.symmetric(horizontal: 16.0),
-                      //       child: Text(
-                      //         'OR CONNECT',
-                      //         style: GoogleFonts.jetBrainsMono(
-                      //           fontSize: 10,
-                      //           fontWeight: FontWeight.w700,
-                      //           color: AppColors.textSecondary,
-                      //           letterSpacing: 1.0,
-                      //         ),
-                      //       ),
-                      //     ),
-                      //     Expanded(
-                      //         child: Divider(
-                      //             color: Colors.white.withOpacity(0.1))),
-                      //   ],
-                      // ),
-                      // const SizedBox(height: 24),
-                      // Row(
-                      //   children: [
-                      //     Expanded(
-                      //       child: OutlinedButton.icon(
-                      //         onPressed: () {},
-                      //         icon:
-                      //         const Icon(Icons.apple, color: Colors.white),
-                      //         label: Text(
-                      //           'APPLE',
-                      //           style: GoogleFonts.jetBrainsMono(
-                      //             color: Colors.white,
-                      //             fontWeight: FontWeight.w700,
-                      //           ),
-                      //         ),
-                      //         style: OutlinedButton.styleFrom(
-                      //           padding:
-                      //           const EdgeInsets.symmetric(vertical: 16),
-                      //           side: BorderSide(
-                      //               color: Colors.white.withOpacity(0.1)),
-                      //           shape: RoundedRectangleBorder(
-                      //             borderRadius: BorderRadius.circular(12),
-                      //           ),
-                      //           backgroundColor: Colors.black.withOpacity(0.2),
-                      //         ),
-                      //       ),
-                      //     ),
-                      //     const SizedBox(width: 16),
-                      //     Expanded(
-                      //       child: OutlinedButton.icon(
-                      //         onPressed: () {},
-                      //         icon: const Icon(Icons.g_mobiledata,
-                      //             color: Colors.white, size: 32),
-                      //         label: Text(
-                      //           'GOOGLE',
-                      //           style: GoogleFonts.jetBrainsMono(
-                      //             color: Colors.white,
-                      //             fontWeight: FontWeight.w700,
-                      //           ),
-                      //         ),
-                      //         style: OutlinedButton.styleFrom(
-                      //           padding:
-                      //           const EdgeInsets.symmetric(vertical: 16),
-                      //           side: BorderSide(
-                      //               color: Colors.white.withOpacity(0.1)),
-                      //           shape: RoundedRectangleBorder(
-                      //             borderRadius: BorderRadius.circular(12),
-                      //           ),
-                      //           backgroundColor: Colors.black.withOpacity(0.2),
-                      //         ),
-                      //       ),
-                      //     ),
-                      //   ],
-                      // ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const SignUpScreen()),
-                    );
-                  },
-                  child: RichText(
-                    text: TextSpan(
-                      style: GoogleFonts.sora(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                      children: [
-                        const TextSpan(text: 'New to Build Up? '),
-                        TextSpan(
-                          text: 'Create Account',
-                          style: GoogleFonts.sora(
-                            color: AppColors.primaryEmerald,
-                            fontWeight: FontWeight.w700,
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: OutlinedButton(
+                            onPressed: _submitGoogleSignIn,
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.white24),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(28),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.g_mobiledata, color: Colors.white, size: 32),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Sign in with Google',
+                                  style: GoogleFonts.sora(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 0),
+                        Center(
+                          child: TextButton(
+                            onPressed: _submitGuestLogin,
+                            child: Text(
+                              'CONTINUE AS GUEST',
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 12,
+                                color: AppColors.primaryEmerald,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
                           ),
                         ),
                       ],
-                    ),
+                      const SizedBox(height: 0),
+                      Center(
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                            );
+                          },
+                          child: RichText(
+                            text: TextSpan(
+                              text: "DON'T HAVE AN ACCOUNT? ",
+                              style: GoogleFonts.sora(
+                                fontSize: 14,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: "SIGN UP",
+                                  style: TextStyle(
+                                    color: AppColors.primaryEmerald,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

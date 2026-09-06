@@ -22,7 +22,7 @@ class NativeHealthService {
       final int apiLevel = await platform.invokeMethod('getAndroidApiLevel');
       return apiLevel;
     } on PlatformException {
-      return 99; // Returns a high number to hide the notice if an error occurs
+      return 99;
     }
   }
 
