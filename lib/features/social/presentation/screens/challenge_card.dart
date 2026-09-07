@@ -32,6 +32,7 @@ class ChallengeCard extends ConsumerWidget {
     String badgeText = '${challenge.durationInHours}H LIMIT';
     Color badgeColor = AppColors.primaryEmerald;
     IconData badgeIcon = Icons.timer_outlined;
+    String coins = challenge.rewardCoins.toString();
 
     if (challenge.isFailed) {
       badgeText = 'FAILED';
@@ -55,12 +56,20 @@ class ChallengeCard extends ConsumerWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.glassCardBackground.withOpacity(0.1),
+        // Replace the solid color with this gradient
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.glassCardBackground.withOpacity(0.15),
+            AppColors.primaryEmerald.withOpacity(0.4),
+          ],
+        ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: challenge.isFailed
               ? Colors.redAccent.withOpacity(0.5)
-              : AppColors.primaryEmerald.withOpacity(0.0),
+              : AppColors.primaryEmerald.withOpacity(0.1),
           width: 1.5,
         ),
       ),
@@ -76,58 +85,101 @@ class ChallengeCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // title and time left
+                    // Top Section: Split into Left and Right Columns
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          challenge.title,
-                          style: GoogleFonts.sora(
-                            color: AppColors.textPrimary,
-                            fontSize: titleFontSize / 1.2,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        Spacer(),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: size.width * 0.001,
-                            vertical: size.height * 0.006,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Row(
+                        // Left Column: Title and Subtitle
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                badgeIcon,
-                                color: badgeColor,
-                                size: size.width * 0.03,
-                              ),
-                              SizedBox(width: size.width * 0.01),
                               Text(
-                                badgeText,
-                                style: GoogleFonts.inter(
-                                  color: Colors.white,
-                                  fontSize: labelFontSize * 1.3,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
+                                challenge.title,
+                                style: GoogleFonts.sora(
+                                  color: AppColors.textPrimary,
+                                  fontSize: titleFontSize / 1.2,
+                                  fontWeight: FontWeight.w900,
                                 ),
                               ),
-                              SizedBox(width: size.width * .009),
+                              SizedBox(height: size.height * 0.004),
+                              Text(
+                                challenge.subtitle,
+                                style: GoogleFonts.sora(
+                                  color: AppColors.textSecondary,
+                                  fontSize: titleFontSize / 2.5,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
 
-                    //subtitle
-                    Text(
-                      challenge.subtitle,
-                      style: GoogleFonts.sora(
-                        color: AppColors.textSecondary,
-                        fontSize: titleFontSize / 2.5,
-                        fontWeight: FontWeight.w900,
-                      ),
+                        SizedBox(width: 12), // Spacing between columns
+
+                        // Right Column: Badges (Time Limit and Coins)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start, // This left-aligns the badges perfectly
+                          children: [
+                            // Time Limit Badge
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: size.width * 0.01,
+                                vertical: size.height * 0.006,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min, // Prevents RenderFlex issues
+                                children: [
+                                  Icon(
+                                    badgeIcon,
+                                    color: badgeColor,
+                                    size: size.width * 0.03,
+                                  ),
+                                  SizedBox(width: size.width * 0.01),
+                                  Text(
+                                    badgeText,
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: labelFontSize * 1.3,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Coins Badge
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: size.width * 0.01,
+                                vertical: size.height * 0.004,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.paid,
+                                    color: AppColors.primaryEmerald,
+                                    size: size.width * 0.04,
+                                  ),
+                                  SizedBox(width: size.width * 0.01),
+                                  Text(
+                                    "+$coins Coins",
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: titleFontSize / 2.6,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                     SizedBox(height: size.height * 0.002),
                     //steps progress
