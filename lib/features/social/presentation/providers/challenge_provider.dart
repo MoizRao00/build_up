@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/local_storage_service.dart';
 
@@ -334,6 +335,38 @@ class ChallengeNotifier extends Notifier<List<ChallengeItem>> {
       FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'challengeProgress': dataToSave,
       }, SetOptions(merge: true));
+    }
+  }
+  // Add this inside ChallengeNotifier class in challenge_provider.dart
+  Future<void> syncWithFirestore() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists && doc.data()!.containsKey('challengeProgress')) {
+        final cloudData = doc.data()!['challengeProgress'] as Map<String, dynamic>;
+
+        // Update local state
+        state = baseChallenges.map((item) {
+          if (cloudData.containsKey(item.id)) {
+            final data = cloudData[item.id] as Map<String, dynamic>;
+            return item.copyWith(
+              currentSteps: data['currentSteps'] ?? 0,
+              isActive: data['isActive'] ?? false,
+              isCompleted: data['isCompleted'] ?? false,
+              isFailed: data['isFailed'] ?? false,
+              startTime: data['startTime'] != null ? DateTime.parse(data['startTime']) : null,
+            );
+          }
+          return item;
+        }).toList();
+
+        // Save to local storage
+        ref.read(storageProvider).saveChallengeData(jsonEncode(cloudData));
+      }
+    } catch (e) {
+      debugPrint("Challenge sync failed: $e");
     }
   }
 }

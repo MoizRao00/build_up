@@ -7,6 +7,7 @@ class LeaderboardUser {
   final int totalSteps;
   final int monthlyHighScore;
   final String avatarUrl;
+  final String? currentLeague; // New field
 
   LeaderboardUser({
     required this.id,
@@ -14,6 +15,7 @@ class LeaderboardUser {
     required this.totalSteps,
     required this.monthlyHighScore,
     required this.avatarUrl,
+    this.currentLeague,
   });
 
   factory LeaderboardUser.fromDocument(DocumentSnapshot doc) {
@@ -24,6 +26,7 @@ class LeaderboardUser {
       totalSteps: data['totalSteps'] ?? 0,
       monthlyHighScore: data['monthlyHighScore'] ?? 0,
       avatarUrl: data['avatarUrl'] ?? data['photoUrl'] ?? '',
+      currentLeague: data['currentLeague'], // Read from Firestore
     );
   }
 }

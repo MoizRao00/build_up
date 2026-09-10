@@ -17,6 +17,8 @@ class ChallengeCard extends ConsumerWidget {
     final double titleFontSize = size.width * 0.07;
     final double numberFontSize = size.width * 0.06;
     final double labelFontSize = size.width * 0.022;
+    final isCompleted = challenge.isCompleted;
+    final isFailed = challenge.isFailed;
 
     String _formatNumber(int number) {
       if (number >= 100000) {
@@ -56,23 +58,27 @@ class ChallengeCard extends ConsumerWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        // Replace the solid color with this gradient
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.glassCardBackground.withOpacity(0.15),
-            AppColors.primaryEmerald.withOpacity(0.4),
-          ],
-        ),
+        gradient: isFailed
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.redAccent.withOpacity(0.1),
+                  Colors.redAccent.withOpacity(0.3),
+                ],
+              )
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.glassCardBackground.withOpacity(0.15),
+                  AppColors.primaryEmerald.withOpacity(0.4),
+                ],
+              ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: challenge.isFailed
-              ? Colors.redAccent.withOpacity(0.5)
-              : AppColors.primaryEmerald.withOpacity(0.1),
-          width: 1.5,
-        ),
+
       ),
+
       padding: EdgeInsets.all(cardPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -84,13 +90,11 @@ class ChallengeCard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // title and time left
-                    // Top Section: Split into Left and Right Columns
+
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Left Column: Title and Subtitle
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,20 +120,21 @@ class ChallengeCard extends ConsumerWidget {
                           ),
                         ),
 
-                        SizedBox(width: 12), // Spacing between columns
+                        SizedBox(width: 12),
 
-                        // Right Column: Badges (Time Limit and Coins)
                         Column(
-                          crossAxisAlignment: CrossAxisAlignment.start, // This left-aligns the badges perfectly
+                          crossAxisAlignment: CrossAxisAlignment
+                              .start,
                           children: [
-                            // Time Limit Badge
+
                             Container(
                               padding: EdgeInsets.symmetric(
                                 horizontal: size.width * 0.01,
                                 vertical: size.height * 0.006,
                               ),
                               child: Row(
-                                mainAxisSize: MainAxisSize.min, // Prevents RenderFlex issues
+                                mainAxisSize: MainAxisSize
+                                    .min,
                                 children: [
                                   Icon(
                                     badgeIcon,
@@ -150,7 +155,6 @@ class ChallengeCard extends ConsumerWidget {
                               ),
                             ),
 
-                            // Coins Badge
                             Container(
                               padding: EdgeInsets.symmetric(
                                 horizontal: size.width * 0.01,
@@ -209,38 +213,45 @@ class ChallengeCard extends ConsumerWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Row(
+
                               children: [
                                 Text(
-                                  challenge.isActive ? 'ACTIVE' : 'START',
+                                  isCompleted
+                                      ? 'DONE 🏆  '
+                                      : (challenge.isActive
+                                            ? 'ACTIVE'
+                                            : 'START'),
                                   style: GoogleFonts.inter(
-                                    color: challenge.isActive
-                                        ? AppColors.primaryEmerald
-                                        : AppColors.textSecondary,
-                                    fontSize: size.width * 0.032,
+                                    color: isCompleted
+                                        ? Colors.amber
+                                        : (challenge.isActive
+                                              ? AppColors.primaryEmerald
+                                              : AppColors.textSecondary),
+                                    fontSize: isCompleted ?
+                                    size.width * 0.042  :  size.width * 0.032,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: 1.0,
                                   ),
                                 ),
-                                Transform.scale(
-                                  scale: 0.8,
-                                  child: CupertinoSwitch(
-                                    value: challenge.isActive,
-                                    activeColor: AppColors.primaryEmerald,
-                                    trackColor: Colors.white.withOpacity(0.15),
-                                    thumbColor: Colors.white,
-                                    onChanged: (bool value) {
-                                      if (value) {
-                                        ref
-                                            .read(challengeProvider.notifier)
-                                            .startChallenge(challenge.id);
-                                      } else {
-                                        ref
-                                            .read(challengeProvider.notifier)
-                                            .stopChallenge(challenge.id);
-                                      }
-                                    },
+                                if (!isCompleted)
+                                  Transform.scale(
+                                    scale: 0.8,
+                                    child: CupertinoSwitch(
+                                      value: challenge.isActive,
+                                      activeColor: AppColors.primaryEmerald,
+                                      onChanged: (bool value) {
+                                        if (value) {
+                                          ref
+                                              .read(challengeProvider.notifier)
+                                              .startChallenge(challenge.id);
+                                        } else {
+                                          ref
+                                              .read(challengeProvider.notifier)
+                                              .stopChallenge(challenge.id);
+                                        }
+                                      },
+                                    ),
                                   ),
-                                ),
                               ],
                             ),
                           ],

@@ -9,148 +9,23 @@ import '../providers/challenge_provider.dart';
 import '../providers/leaderboard_provider.dart';
 import 'challenge_card.dart';
 
-class StepChallenge {
-  final String id;
-  final String title;
-  final String subtitle;
-  final String rewardText;
-  final int targetSteps;
-  final bool isActive;
-  final double progress;
-
-  const StepChallenge({
-    required this.id,
-    required this.title,
-    required this.subtitle,
-    required this.rewardText,
-    required this.targetSteps,
-    required this.isActive,
-    required this.progress,
-  });
-}
-
-final demoChallenges = [
-  const StepChallenge(
-    id: '1',
-    title: 'Starter Sprint',
-    subtitle: 'Walk 1,000 steps today',
-    rewardText: '+15 Coins',
-    targetSteps: 1000,
-    isActive: false,
-    progress: 0.0,
-  ),
-  const StepChallenge(
-    id: '2',
-    title: 'Morning Stroll',
-    subtitle: 'Walk 3,000 steps',
-    rewardText: '+45 Coins',
-    targetSteps: 3000,
-    isActive: false,
-    progress: 0.0,
-  ),
-  const StepChallenge(
-    id: '3',
-    title: 'Daily Dash',
-    subtitle: 'Walk 5,000 steps in 24 hours',
-    rewardText: '+75 Coins',
-    targetSteps: 5000,
-    isActive: false,
-    progress: 0.0,
-  ),
-  const StepChallenge(
-    id: '4',
-    title: 'Step Master',
-    subtitle: 'Walk 8,000 steps',
-    rewardText: '+120 Coins',
-    targetSteps: 8000,
-    isActive: false,
-    progress: 0.0,
-  ),
-  const StepChallenge(
-    id: '5',
-    title: '10K Milestone',
-    subtitle: 'Walk 10,000 steps in one day',
-    rewardText: '+150 Coins',
-    targetSteps: 10000,
-    isActive: false,
-    progress: 0.0,
-  ),
-  const StepChallenge(
-    id: '6',
-    title: 'Lunchtime Loop',
-    subtitle: 'Walk 12,000 steps',
-    rewardText: '+180 Coins',
-    targetSteps: 12000,
-    isActive: false,
-    progress: 0.0,
-  ),
-  const StepChallenge(
-    id: '7',
-    title: 'Weekend Hiker',
-    subtitle: 'Walk 15,000 steps this weekend',
-    rewardText: '+225 Coins',
-    targetSteps: 15000,
-    isActive: false,
-    progress: 0.0,
-  ),
-  const StepChallenge(
-    id: '8',
-    title: 'Double Dash',
-    subtitle: 'Walk 20,000 steps in 2 days',
-    rewardText: '+300 Coins',
-    targetSteps: 20000,
-    isActive: false,
-    progress: 0.0,
-  ),
-  const StepChallenge(
-    id: '9',
-    title: 'City Sprinter',
-    subtitle: 'Walk 26,000 steps (20km)',
-    rewardText: '+390 Coins',
-    targetSteps: 26000,
-    isActive: false,
-    progress: 0.0,
-  ),
-  const StepChallenge(
-    id: '10',
-    title: 'Marathon Walker',
-    subtitle: 'Walk 40,000 steps in a week',
-    rewardText: '+600 Coins',
-    targetSteps: 40000,
-    isActive: false,
-    progress: 0.0,
-  ),
-  const StepChallenge(
-    id: '11',
-    title: 'Weekly Warrior',
-    subtitle: 'Walk 50,000 steps in 7 days',
-    rewardText: '+750 Coins',
-    targetSteps: 50000,
-    isActive: false,
-    progress: 0.0,
-  ),
-  const StepChallenge(
-    id: '12',
-    title: 'Ultra Explorer',
-    subtitle: 'Walk 75,000 steps in 10 days',
-    rewardText: '+1,125 Coins',
-    targetSteps: 75000,
-    isActive: false,
-    progress: 0.0,
-  ),
-  const StepChallenge(
-    id: '13',
-    title: 'Century Club',
-    subtitle: 'Walk 100,000 steps this month',
-    rewardText: '+1,500 Coins',
-    targetSteps: 100000,
-    isActive: false,
-    progress: 0.0,
-  ),
-];
-
 class ChallengeScreen extends ConsumerWidget {
   const ChallengeScreen({super.key});
+
+  Color _getUserTierColor(LeaderboardUser user) {
+    // Priority 1: Use the actual league saved in Firestore
+    final league = user.currentLeague?.toLowerCase();
+    if (league == 'diamond') return LeagueTier.diamond.color;
+    if (league == 'gold') return LeagueTier.gold.color;
+    if (league == 'silver') return LeagueTier.silver.color;
+    if (league == 'bronze') return LeagueTier.bronze.color;
+
+    // Priority 2: Fallback calculation for legacy data
+    if (user.monthlyHighScore >= 12000) return LeagueTier.diamond.color;
+    if (user.monthlyHighScore >= 8000) return LeagueTier.gold.color;
+    if (user.monthlyHighScore >= 5000) return LeagueTier.silver.color;
+    return LeagueTier.bronze.color;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -158,12 +33,10 @@ class ChallengeScreen extends ConsumerWidget {
     final leaderboardAsync = ref.watch(leaderboardProvider);
     final size = MediaQuery.of(context).size;
     final challenges = ref.watch(challengeProvider);
-    final stepState = ref.watch(stepNotifierProvider);
-    Color currentTierColor = stepState.currentLeague.color;
+    
     final double horizontalPadding = size.width * 0.05;
     final double verticalSpacing = size.height * 0.02;
     final double titleFontSize = size.width * 0.06;
-    final double buttonFontSize = size.width * 0.035;
 
     final activeList = challenges.where((c) => c.isActive && !c.isCompleted).toList();
     final displayList = [...activeList.take(2)];
@@ -197,12 +70,10 @@ class ChallengeScreen extends ConsumerWidget {
                 ),
               ),
               SizedBox(height: verticalSpacing),
-              SizedBox(height: verticalSpacing/2),
               Padding(
-                padding:  EdgeInsets.fromLTRB(horizontalPadding* 1.5, 0, horizontalPadding*1.5, 0),
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding * 1.5),
                 child: Row(
-                  mainAxisAlignment: .spaceBetween,
-                  textBaseline: TextBaseline.alphabetic,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       'Active',
@@ -225,7 +96,7 @@ class ChallengeScreen extends ConsumerWidget {
                       child: Text(
                         'VIEW All',
                         style: GoogleFonts.jetBrainsMono(
-                          fontSize: titleFontSize/2,
+                          fontSize: titleFontSize / 2,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textSecondary,
                           letterSpacing: 1.2,
@@ -235,8 +106,7 @@ class ChallengeScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              SizedBox(height: verticalSpacing/2),
-
+              SizedBox(height: verticalSpacing / 2),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                 child: Column(
@@ -248,8 +118,6 @@ class ChallengeScreen extends ConsumerWidget {
                   }).toList(),
                 ),
               ),
-              SizedBox(height: size.height * 0.00),
-              SizedBox(height: size.height * 0.001),
               Center(
                 child: Text(
                   'STEP RACE',
@@ -286,6 +154,7 @@ class ChallengeScreen extends ConsumerWidget {
                         final user = users[index];
                         final bool isImageUrl = user.avatarUrl.startsWith('http');
                         final double avatarSize = size.width * 0.12;
+                        final userTierColor = _getUserTierColor(user);
 
                         return Container(
                           margin: EdgeInsets.only(bottom: size.height * 0.015),
@@ -309,7 +178,7 @@ class ChallengeScreen extends ConsumerWidget {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: currentTierColor,
+                                    color: userTierColor,
                                     width: 2,
                                   ),
                                 ),
@@ -353,7 +222,7 @@ class ChallengeScreen extends ConsumerWidget {
                               Text(
                                 '${user.monthlyHighScore}',
                                 style: GoogleFonts.inter(
-                                  color: AppColors.primaryEmerald,
+                                  color: userTierColor,
                                   fontWeight: FontWeight.w700,
                                   fontSize: size.width * 0.05,
                                 ),

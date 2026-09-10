@@ -68,7 +68,7 @@ class InsightsScreen extends ConsumerWidget {
         title: Text(
           'WEEKLY INSIGHTS',
           style: GoogleFonts.sora(
-            fontSize: size.width * 0.05,
+            fontSize: size.width * 0.06,
             fontWeight: FontWeight.w900,
             color: AppColors.textPrimary,
             letterSpacing: .1,
