@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/local_storage_service.dart';
-import '../../../step_tracking/presentation/providers/step_provider.dart';
 
 class ChallengeItem {
   final String id;
@@ -142,7 +141,7 @@ final baseChallenges = [
     subtitle: 'Walk 26,000 steps (20km)',
     targetSteps: 26000,
     rewardCoins: 390,
-    durationInHours: 240, // 10 days
+    durationInHours: 240,
   ),
   const ChallengeItem(
     id: '10',
@@ -150,7 +149,7 @@ final baseChallenges = [
     subtitle: 'Walk 40,000 steps in a week',
     targetSteps: 40000,
     rewardCoins: 600,
-    durationInHours: 168, // 7 days
+    durationInHours: 168,
   ),
   const ChallengeItem(
     id: '11',
@@ -174,10 +173,13 @@ final baseChallenges = [
     subtitle: 'Walk 100,000 steps this month',
     targetSteps: 100000,
     rewardCoins: 1500,
-    durationInHours: 720, // 30 days
+    durationInHours: 720,
   ),
 ];
 
+final storageProvider = Provider<LocalStorageService>((ref) {
+  return LocalStorageService();
+});
 
 final challengeProvider =
 NotifierProvider<ChallengeNotifier, List<ChallengeItem>>(
@@ -195,26 +197,53 @@ class ChallengeNotifier extends Notifier<List<ChallengeItem>> {
       savedMap = jsonDecode(rawJson) as Map<String, dynamic>;
     } catch (_) {}
 
-    return baseChallenges.map((item) {
+    final now = DateTime.now();
+    bool anyFailure = false;
+
+    final list = baseChallenges.map((item) {
       if (savedMap.containsKey(item.id)) {
         final data = savedMap[item.id] as Map<String, dynamic>;
+        
+        DateTime? startTime = data['startTime'] != null ? DateTime.parse(data['startTime']) : null;
+        bool isActive = data['isActive'] ?? false;
+        bool isFailed = data['isFailed'] ?? false;
+        bool isCompleted = data['isCompleted'] ?? false;
+
+        if (isActive && startTime != null) {
+          final deadline = startTime.add(Duration(hours: item.durationInHours));
+          if (now.isAfter(deadline)) {
+            isActive = false;
+            isFailed = true;
+            anyFailure = true;
+          }
+        }
+
         return item.copyWith(
           currentSteps: data['currentSteps'] ?? 0,
-          isActive: data['isActive'] ?? false,
-          isCompleted: data['isCompleted'] ?? false,
+          isActive: isActive,
+          isCompleted: isCompleted,
+          isFailed: isFailed,
+          startTime: startTime,
         );
       }
       return item;
     }).toList();
+
+    if (anyFailure) {
+      Future.microtask(() => _persistState(list));
+    }
+
+    return list;
   }
 
   void startChallenge(String id) {
     state = state.map((item) {
-      if (item.id == id && !item.isCompleted && !item.isFailed) {
+      if (item.id == id && !item.isCompleted) {
         return item.copyWith(
           isActive: true,
           startTime: DateTime.now(),
           currentSteps: 0,
+          isFailed: false,
         );
       }
       return item;
@@ -222,6 +251,7 @@ class ChallengeNotifier extends Notifier<List<ChallengeItem>> {
 
     _persistState();
   }
+
   void stopChallenge(String id) {
     state = state.map((item) {
       if (item.id == id && item.isActive) {
@@ -255,9 +285,9 @@ class ChallengeNotifier extends Notifier<List<ChallengeItem>> {
     if (changed) _persistState();
   }
 
-  void addStepsToActiveChallenges(int stepsDelta) {
+  int addStepsToActiveChallenges(int stepsDelta) {
     validateFailures();
-    if (stepsDelta <= 0) return;
+    if (stepsDelta <= 0) return 0;
 
     bool stateChanged = false;
     int earnedCoins = 0;
@@ -283,36 +313,17 @@ class ChallengeNotifier extends Notifier<List<ChallengeItem>> {
     if (stateChanged) {
       state = updated;
       _persistState();
-
-      if (earnedCoins > 0) {
-        _awardRewardCoins(earnedCoins);
-      }
     }
+    
+    return earnedCoins;
   }
 
-  void _awardRewardCoins(int coinsToAdd) {
+  void _persistState([List<ChallengeItem>? customState]) {
     final storage = ref.read(storageProvider);
-    final currentCoins = storage.getCoins();
-    final updatedCoins = currentCoins + coinsToAdd;
-    storage.saveCoins(updatedCoins);
-
-    final stepNotifier = ref.read(stepNotifierProvider.notifier);
-    stepNotifier.forceRefresh();
-
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-        'currentCoins': updatedCoins,
-        'lastUpdated': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-    }
-  }
-
-  void _persistState() {
-    final storage = ref.read(storageProvider);
+    final listToSave = customState ?? state;
     final Map<String, dynamic> dataToSave = {};
 
-    for (var item in state) {
+    for (var item in listToSave) {
       dataToSave[item.id] = item.toMap();
     }
 

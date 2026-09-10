@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart' as g_sign_in;
 import 'package:health/health.dart';
 import 'package:workmanager/workmanager.dart';
 import 'app/app.dart';
@@ -120,9 +121,12 @@ void callbackDispatcher() {
     return Future.value(true);
   });
 }
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  await g_sign_in.GoogleSignIn.instance.initialize();
 
   final storage = LocalStorageService();
   await storage.init();

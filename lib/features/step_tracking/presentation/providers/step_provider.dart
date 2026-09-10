@@ -9,7 +9,6 @@ import '../../../../core/notification_provider/notification_provider.dart';
 import '../../../../core/services/local_storage_service.dart';
 import '../../../../core/services/native_health_service.dart';
 import '../../../../core/services/widget_service.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../social/presentation/providers/challenge_provider.dart';
 
 enum LeagueTier {
@@ -135,6 +134,7 @@ class StepNotifier extends Notifier<StepState> {
   Timer? _pollingTimer;
   AppLifecycleListener? _lifecycleListener;
   int _lastSyncedSteps = 0;
+  String? _lastProcessedDate;
 
   @override
   StepState build() {
@@ -149,11 +149,11 @@ class StepNotifier extends Notifier<StepState> {
       _lifecycleListener?.dispose();
     });
 
-
     final storage = ref.watch(storageProvider);
     final now = DateTime.now();
-    final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    final displaySteps = storage.getLastDate() == dateStr ? storage.getSteps() : 0;
+    _lastProcessedDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    
+    final displaySteps = storage.getLastDate() == _lastProcessedDate ? storage.getSteps() : 0;
     final savedCoins = storage.getCoins();
     final savedGoal = storage.getStepGoal();
 
@@ -173,6 +173,35 @@ class StepNotifier extends Notifier<StepState> {
     );
   }
 
+  void addCoins(int amount) {
+    final storage = ref.read(storageProvider);
+    final newTotal = state.coins + amount;
+    storage.saveCoins(newTotal);
+    state = state.copyWith(coins: newTotal);
+    _syncCoinsToFirestore(newTotal);
+  }
+
+  bool deductCoins(int amount) {
+    final storage = ref.read(storageProvider);
+    if (state.coins >= amount) {
+      final newTotal = state.coins - amount;
+      storage.saveCoins(newTotal);
+      state = state.copyWith(coins: newTotal);
+      _syncCoinsToFirestore(newTotal);
+      return true;
+    }
+    return false;
+  }
+
+  void _syncCoinsToFirestore(int coins) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'currentCoins': coins,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+  }
 
   void _forceCloudSync() {
     if (state.currentSteps > _lastSyncedSteps) {
@@ -190,7 +219,6 @@ class StepNotifier extends Notifier<StepState> {
   void _handleDailyResetIfNeeded({int? hardwareSteps}) {
     final storage = ref.read(storageProvider);
     final now = DateTime.now();
-
     final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
     if (storage.getLastDate() != dateStr) {
@@ -206,9 +234,7 @@ class StepNotifier extends Notifier<StepState> {
       String weeklyData = storage.getWeeklySteps();
       List<int> weekly = weeklyData.split(',').map((e) => int.tryParse(e) ?? 0).toList();
       if (weekly.length != 7) weekly = [0, 0, 0, 0, 0, 0, 0];
-
       weekly[now.weekday - 1] = 0;
-
       storage.saveWeeklySteps(weekly.join(','));
     }
   }
@@ -216,7 +242,6 @@ class StepNotifier extends Notifier<StepState> {
   Future initializeTracking() async {
     _health.configure();
     final types = [HealthDataType.STEPS];
-
     final activityStatus = await Permission.activityRecognition.request();
 
     if (!activityStatus.isGranted) {
@@ -235,26 +260,19 @@ class StepNotifier extends Notifier<StepState> {
 
     if (hasPermissions) {
       await _fetchHealthData();
-
       _pollingTimer?.cancel();
       _pollingTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
-        if (!state.isRestMode) {
-          _fetchHealthData();
-        }
+        if (!state.isRestMode) _fetchHealthData();
       });
     } else {
       await _fetchFallbackData();
-
       _pollingTimer?.cancel();
       _pollingTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
-        if (!state.isRestMode) {
-          _fetchFallbackData();
-        }
+        if (!state.isRestMode) _fetchFallbackData();
       });
     }
   }
 
-  //Data from Health Connect
   Future<void> _fetchHealthData() async {
     try {
       _handleDailyResetIfNeeded();
@@ -267,11 +285,9 @@ class StepNotifier extends Notifier<StepState> {
     }
   }
 
-  // Data from Raw Hardware
   Future<void> _fetchFallbackData() async {
     final nativeHealth = ref.read(nativeHealthProvider);
     final hardwareSteps = await nativeHealth.getHardwareSteps();
-
     if (hardwareSteps == 0) return;
 
     _handleDailyResetIfNeeded(hardwareSteps: hardwareSteps);
@@ -279,12 +295,9 @@ class StepNotifier extends Notifier<StepState> {
     final storage = ref.read(storageProvider);
     int baseline = storage.getHardwareBaseline();
 
-    // Catch hardware reboot (drop to zero or below baseline)
     if (baseline > 0 && hardwareSteps < baseline) {
       int savedStepsToday = storage.getSteps();
-      // newBaseline calculation: hardwareSteps - newBaseline = savedStepsToday + (hardwareSteps since reboot)
-      // Assuming hardwareSteps is now the count since reboot:
-      int newBaseline = -savedStepsToday;
+      int newBaseline = hardwareSteps - savedStepsToday;
       storage.saveHardwareBaseline(newBaseline);
       baseline = newBaseline;
     }
@@ -301,20 +314,36 @@ class StepNotifier extends Notifier<StepState> {
   }
 
   void _processSteps(int todaySteps, String trackingStatus) {
-
     final storage = ref.read(storageProvider);
     final now = DateTime.now();
+    final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
     if (todaySteps < 0) todaySteps = 0;
 
+    int previousSteps = state.currentSteps;
+    if (_lastProcessedDate != dateStr) {
+      previousSteps = 0;
+      _lastProcessedDate = dateStr;
+    }
+
+    final int deltaSteps = todaySteps - previousSteps;
+
+    if (deltaSteps > 0) {
+      final challengeCoins = ref.read(challengeProvider.notifier).addStepsToActiveChallenges(deltaSteps);
+      if (challengeCoins > 0) {
+        addCoins(challengeCoins);
+      }
+    }
+
     int lastCoinStep = storage.getLastCoinStep();
-    int currentCoins = storage.getCoins();
+    int currentCoins = state.coins;
 
     if (todaySteps >= lastCoinStep + 100) {
       int newCoins = (todaySteps - lastCoinStep) ~/ 100;
       currentCoins += newCoins;
       storage.saveCoins(currentCoins);
       storage.saveLastCoinStep(lastCoinStep + (newCoins * 100));
+      _syncCoinsToFirestore(currentCoins);
     }
 
     bool hasNotified = storage.getGoalNotified();
@@ -328,28 +357,17 @@ class StepNotifier extends Notifier<StepState> {
     String weeklyData = storage.getWeeklySteps();
     List<int> weekly = weeklyData.split(',').map((e) => int.tryParse(e) ?? 0).toList();
     if (weekly.length != 7) weekly = [0, 0, 0, 0, 0, 0, 0];
-
     weekly[now.weekday - 1] = todaySteps;
     storage.saveWeeklySteps(weekly.join(','));
-
-    double currentCalories = todaySteps * 0.04;
-    double currentDistance = todaySteps * 0.00075;
 
     if (todaySteps - _lastSyncedSteps >= 500) {
       _forceCloudSync();
     }
 
-    final int previousSteps = state.currentSteps;
-    final int deltaSteps = todaySteps - previousSteps;
-
-    if (deltaSteps > 0) {
-      ref.read(challengeProvider.notifier).addStepsToActiveChallenges(deltaSteps);
-    }
-
     state = state.copyWith(
       currentSteps: todaySteps,
-      calories: currentCalories,
-      distanceKm: currentDistance,
+      calories: todaySteps * 0.04,
+      distanceKm: todaySteps * 0.00075,
       coins: currentCoins,
       pedestrianStatus: trackingStatus,
       weeklySteps: weekly,
@@ -357,40 +375,28 @@ class StepNotifier extends Notifier<StepState> {
 
     storage.saveSteps(todaySteps);
     ref.read(widgetServiceProvider).updateWidgetData(todaySteps, state.goalSteps);
-
-
-
   }
 
   void _updateLeaderboardScore(int todaySteps) {
     final storage = ref.read(storageProvider);
     final now = DateTime.now();
-    final currentMonth = now.month;
-
-    int savedMonth = storage.getSavedMonth();
-
-    if (currentMonth != savedMonth) {
-      storage.saveSavedMonth(currentMonth);
+    if (now.month != storage.getSavedMonth()) {
+      storage.saveSavedMonth(now.month);
       storage.saveMonthlyHighScore(0);
       _syncHighScoreToFirestore(0);
     }
-
-    int highScore = storage.getMonthlyHighScore();
-
-    if (todaySteps > highScore) {
+    if (todaySteps > storage.getMonthlyHighScore()) {
       storage.saveMonthlyHighScore(todaySteps);
       _syncHighScoreToFirestore(todaySteps);
     }
   }
 
   void _syncHighScoreToFirestore(int score) {
-    final user = ref.read(authStateProvider).value;
+    final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       FirebaseFirestore.instance.collection('users').doc(user.uid).update({
         'monthlyHighScore': score,
         'lastUpdated': FieldValue.serverTimestamp(),
-      }).catchError((error) {
-        debugPrint('Firestore high score sync failed: $error');
       });
     }
   }
@@ -400,90 +406,41 @@ class StepNotifier extends Notifier<StepState> {
     if (user != null) {
       final now = DateTime.now();
       final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-
-      int totalWeeklySteps = weekly.reduce((a, b) => a + b);
-      double weeklyCalories = totalWeeklySteps * 0.04;
-
       FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'currentCoins': coins,
         'todaySteps': todaySteps,
         'todayCalories': calories,
         'todayDistanceKm': distance,
         'weeklySteps': weekly,
-        'weeklyCalories': weeklyCalories,
         'lastUpdated': FieldValue.serverTimestamp(),
-        'dailyHistory': {
-          dateStr: todaySteps,
-        }
-      }, SetOptions(merge: true)).catchError((error) {
-        debugPrint('Firestore profile sync failed: $error');
-      });
+        'dailyHistory': {dateStr: todaySteps}
+      }, SetOptions(merge: true));
     }
   }
 
   void updateGoal(int newGoal) {
-    final storage = ref.read(storageProvider);
-    storage.saveStepGoal(newGoal);
+    ref.read(storageProvider).saveStepGoal(newGoal);
     state = state.copyWith(goalSteps: newGoal);
     ref.read(widgetServiceProvider).updateWidgetData(state.currentSteps, newGoal);
-  }
-
-  void toggleRestMode() {
-    state = state.copyWith(isRestMode: !state.isRestMode);
-  }
-
-  bool deductCoins(int amount) {
-    final storage = ref.read(storageProvider);
-    int currentCoins = storage.getCoins();
-
-    if (currentCoins >= amount) {
-      int newBalance = currentCoins - amount;
-      storage.saveCoins(newBalance);
-      state = state.copyWith(coins: newBalance);
-      return true;
-    }
-    return false;
   }
 
   Future<void> forceRefresh() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      try {
-        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-        if (doc.exists) {
-          final data = doc.data()!;
-          final storage = ref.read(storageProvider);
-
-          int fetchedCoins = data['currentCoins'] ?? storage.getCoins();
-          int fetchedGoal = data['stepGoal'] ?? storage.getStepGoal();
-
-          List<int> fetchedWeekly = state.weeklySteps;
-          if (data['weeklySteps'] != null) {
-            fetchedWeekly = (data['weeklySteps'] as List<dynamic>).map((e) => int.parse(e.toString())).toList();
-          }
-
-          storage.saveCoins(fetchedCoins);
-          storage.saveStepGoal(fetchedGoal);
-          storage.saveWeeklySteps(fetchedWeekly.join(','));
-
-          state = state.copyWith(
-            coins: fetchedCoins,
-            goalSteps: fetchedGoal,
-            weeklySteps: fetchedWeekly,
-          );
-        }
-      } catch (e) {
-        debugPrint('Firebase refresh failed: $e');
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        final storage = ref.read(storageProvider);
+        int fetchedCoins = data['currentCoins'] ?? storage.getCoins();
+        storage.saveCoins(fetchedCoins);
+        state = state.copyWith(coins: fetchedCoins);
       }
     }
-
-    // Force an immediate local sensor update
     await initializeTracking();
   }
 
   Future<void> restoreDataFromFirebase() async {
-
-    final user = ref.read(authStateProvider).value;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     try {
@@ -497,13 +454,11 @@ class StepNotifier extends Notifier<StepState> {
       if (data.containsKey('currentCoins')) storage.saveCoins(data['currentCoins']);
       if (data.containsKey('monthlyHighScore')) storage.saveMonthlyHighScore(data['monthlyHighScore']);
 
-
       List<int> loadedWeekly = [0, 0, 0, 0, 0, 0, 0];
       if (data.containsKey('weeklySteps')) {
         loadedWeekly = (data['weeklySteps'] as List).map((e) => e as int).toList();
         storage.saveWeeklySteps(loadedWeekly.join(','));
       }
-
 
       final now = DateTime.now();
       final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -513,17 +468,9 @@ class StepNotifier extends Notifier<StepState> {
         restoredSteps = data['dailyHistory'][dateStr] as int;
         storage.saveSteps(restoredSteps);
         storage.saveLastDate(dateStr);
-
         storage.saveLastCoinStep((restoredSteps ~/ 100) * 100);
       }
 
-      final nativeHealth = ref.read(nativeHealthProvider);
-      final hardwareSteps = await nativeHealth.getHardwareSteps();
-
-      if (hardwareSteps > 0) {
-        int newBaseline = hardwareSteps - restoredSteps;
-        storage.saveHardwareBaseline(newBaseline);
-      }
       state = state.copyWith(
         currentSteps: restoredSteps,
         goalSteps: data['stepGoal'] ?? 10000,
@@ -532,7 +479,6 @@ class StepNotifier extends Notifier<StepState> {
         calories: restoredSteps * 0.04,
         distanceKm: restoredSteps * 0.00075,
       );
-
     } catch (e) {
       debugPrint('Firebase restore failed: $e');
     }

@@ -1,10 +1,9 @@
-import 'package:build_up/features/settings/presentation/tier_badge.dart';
 import 'package:build_up/features/settings/presentation/tier_info_screen.dart';
 import 'package:build_up/features/shop/presentation/screens/store_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../step_tracking/presentation/providers/step_provider.dart';
 import '../../../core/utils/export_service.dart';
@@ -20,18 +19,18 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+
     final stepState = ref.watch(stepNotifierProvider);
     final exportService = ExportService();
     final authController = ref.watch(authControllerProvider);
-    
-    // Watch the live profile data from Firestore
+
     final profileAsync = ref.watch(userProfileProvider);
     final profile = profileAsync.value;
     
     final displayName = profile?['name'] ?? profile?['displayName'] ?? 'Build Up User';
     final avatar = profile?['avatarUrl'] ?? '👦';
 
-    // Responsive sizing
+
     final size = MediaQuery.of(context).size;
     final screenWidth = size.width;
     final screenHeight = size.height;
@@ -46,7 +45,6 @@ class SettingsScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(height: screenHeight * 0.04),
-      
                 Center(
                   child: Column(
                     children: [
@@ -208,7 +206,23 @@ class SettingsScreen extends ConsumerWidget {
                     },
                   ),
                 ),
-      
+                FutureBuilder<PackageInfo>(                  future: PackageInfo.fromPlatform(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) return const SizedBox.shrink();
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                        child: Text(
+                          'Build Up Version ${snapshot.data!.version}',
+                          style: GoogleFonts.sora(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                )
               ],
             ),
           ),

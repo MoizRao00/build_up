@@ -77,20 +77,16 @@ class AuthController {
 
   Future<void> signInWithGoogle() async {
     try {
-      // 2. You must call initialize() first in version 7
-      await _googleSignIn.initialize();
 
-      // 3. Use authenticate() instead of signIn()
+
       final g_sign_in.GoogleSignInAccount? googleUser = await _googleSignIn.authenticate();
       if (googleUser == null) return;
 
-      // 4. Request the access token separately via authorizationClient
       final clientAuth = await googleUser.authorizationClient?.authorizeScopes(['email', 'profile']);
       if (clientAuth == null) return;
 
       final g_sign_in.GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      // 5. Combine the access token (from clientAuth) and id token (from googleAuth)
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: clientAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -137,9 +133,9 @@ class AuthController {
       await user.updateDisplayName(name);
     }
   }
+
   Future<void> signOut() async {
     await _auth.signOut();
-    // 6. Use the instance here as well
     await g_sign_in.GoogleSignIn.instance.signOut();
     final storage = LocalStorageService();
     await storage.init();
