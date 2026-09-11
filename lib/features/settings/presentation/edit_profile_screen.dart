@@ -18,6 +18,10 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController nameController;
   late TextEditingController goalController;
+  late TextEditingController weightController;
+  late TextEditingController heightController;
+  late TextEditingController bodyFatController;
+
   String selectedAvatar = '🤖';
   bool _isSaving = false;
 
@@ -34,26 +38,40 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     nameController = TextEditingController(text: displayName);
     goalController = TextEditingController(text: stepState.goalSteps.toString());
-    
-    // Load current avatar from Firestore
-    _loadUserAvatar();
+    weightController = TextEditingController();
+    heightController = TextEditingController();
+    bodyFatController = TextEditingController();
+
+    _loadUserProfile();
   }
 
-  Future<void> _loadUserAvatar() async {
+  Future<void> _loadUserProfile() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
         final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-        if (doc.exists && doc.data()?['avatarUrl'] != null) {
-          final savedAvatar = doc.data()?['avatarUrl'];
-          if (avatars.contains(savedAvatar)) {
-            setState(() {
-              selectedAvatar = savedAvatar;
-            });
+        if (doc.exists) {
+          final data = doc.data();
+          if (data?['avatarUrl'] != null) {
+            final savedAvatar = data?['avatarUrl'];
+            if (avatars.contains(savedAvatar)) {
+              setState(() {
+                selectedAvatar = savedAvatar;
+              });
+            }
+          }
+          if (data?['weight'] != null) {
+            weightController.text = data!['weight'].toString();
+          }
+          if (data?['height'] != null) {
+            heightController.text = data!['height'].toString();
+          }
+          if (data?['bodyFat'] != null) {
+            bodyFatController.text = data!['bodyFat'].toString();
           }
         }
       } catch (e) {
-        debugPrint('Error loading avatar: $e');
+        debugPrint('Error loading profile: $e');
       }
     }
   }
@@ -62,6 +80,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   void dispose() {
     nameController.dispose();
     goalController.dispose();
+    weightController.dispose();
+    heightController.dispose();
+    bodyFatController.dispose();
     super.dispose();
   }
 
@@ -70,24 +91,36 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     final newName = nameController.text.trim();
     final newGoal = int.tryParse(goalController.text) ?? 10000;
+    final weight = double.tryParse(weightController.text) ?? 70.0;
+    final height = double.tryParse(heightController.text) ?? 170.0;
+    final bodyFat = double.tryParse(bodyFatController.text);
 
     setState(() => _isSaving = true);
 
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null && newName.isNotEmpty) {
-        // 1. Update Firebase Display Name
         await user.updateDisplayName(newName);
 
-        // 2. Sync Name and Avatar to Firestore for Social Screen
+        double? bmi;
+        if (weight > 0 && height > 0) {
+          final heightInMeters = height / 100;
+          bmi = weight / (heightInMeters * heightInMeters);
+        }
+
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
           'name': newName,
           'avatarUrl': selectedAvatar,
+          'weight': weight,
+          'height': height,
+          'bodyFat': bodyFat,
+          'bmi': bmi,
           'lastUpdated': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
+
       }
 
-      // 3. Update Step Goal
+      ref.read(stepNotifierProvider.notifier).updateProfile(height, weight);
       ref.read(stepNotifierProvider.notifier).updateGoal(newGoal);
 
       if (mounted) {
@@ -113,7 +146,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             duration: const Duration(seconds: 2),
           ),
         );
-        
+
         if (Navigator.canPop(context)) {
           Navigator.pop(context);
         }
@@ -127,6 +160,40 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0, top: 24.0),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: AppColors.textSecondary,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputField(TextEditingController controller, String hint, IconData icon, {bool isNumber = false}) {
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: TextField(
+        controller: controller,
+        keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+        style: GoogleFonts.sora(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w600,
+        ),
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          hintText: hint,
+          hintStyle: const TextStyle(color: AppColors.textSecondary),
+          icon: Icon(icon, color: AppColors.primaryEmerald),
+        ),
+      ),
+    );
   }
 
   @override
@@ -197,59 +264,22 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 },
               ),
             ),
-            const SizedBox(height: 32),
-            const Text(
-              'DISPLAY NAME',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            GlassCard(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: TextField(
-                controller: nameController,
-                style: GoogleFonts.sora(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'Enter your name',
-                  hintStyle: TextStyle(color: AppColors.textSecondary),
-                  icon: Icon(Icons.badge, color: AppColors.primaryEmerald),
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-            const Text(
-              'DAILY STEP GOAL',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            GlassCard(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: TextField(
-                controller: goalController,
-                keyboardType: TextInputType.number,
-                style: GoogleFonts.sora(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'e.g. 10000',
-                  hintStyle: TextStyle(color: AppColors.textSecondary),
-                  icon: Icon(Icons.directions_walk, color: AppColors.primaryEmerald),
-                ),
-              ),
-            ),
+
+            _buildLabel('DISPLAY NAME'),
+            _buildInputField(nameController, 'Enter your name', Icons.badge),
+
+            _buildLabel('DAILY STEP GOAL'),
+            _buildInputField(goalController, 'e.g. 10000', Icons.directions_walk, isNumber: true),
+
+            _buildLabel('WEIGHT (KG)'),
+            _buildInputField(weightController, 'e.g. 70.5', Icons.monitor_weight, isNumber: true),
+
+            _buildLabel('HEIGHT (CM)'),
+            _buildInputField(heightController, 'e.g. 175', Icons.height, isNumber: true),
+
+            _buildLabel('BODY FAT (%)'),
+            _buildInputField(bodyFatController, 'e.g. 15', Icons.percent, isNumber: true),
+
             const SizedBox(height: 48),
             SizedBox(
               width: double.infinity,
@@ -263,26 +293,27 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   elevation: 0,
                 ),
                 onPressed: _isSaving ? null : saveProfile,
-                child: _isSaving 
-                  ? const SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: CircularProgressIndicator(
-                        color: AppColors.backgroundDark,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : Text(
-                      'SAVE CHANGES',
-                      style: GoogleFonts.sora(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.backgroundDark,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
+                child: _isSaving
+                    ? const SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(
+                    color: AppColors.backgroundDark,
+                    strokeWidth: 2,
+                  ),
+                )
+                    : Text(
+                  'SAVE CHANGES',
+                  style: GoogleFonts.sora(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.backgroundDark,
+                    letterSpacing: 1.2,
+                  ),
+                ),
               ),
             ),
+            const SizedBox(height: 40),
           ],
         ),
       ),

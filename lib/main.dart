@@ -126,7 +126,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  await g_sign_in.GoogleSignIn.instance.initialize();
+  await g_sign_in.GoogleSignIn.instance.initialize(
+    serverClientId: '348703955298-5nrsu7etb9jbvl8cqi7m4g1o222hc61p.apps.googleusercontent.com',
+  );
 
   final storage = LocalStorageService();
   await storage.init();

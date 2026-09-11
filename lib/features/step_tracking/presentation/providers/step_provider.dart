@@ -27,8 +27,11 @@ extension LeagueTierColor on LeagueTier {
 }
 
 // user's step info, coins, etc class
+
 class StepState {
   final int currentSteps;
+  final double height;
+  final double weight;
   final int goalSteps;
   final double calories;
   final double distanceKm;
@@ -39,6 +42,8 @@ class StepState {
 
   const StepState({
     required this.currentSteps,
+    this.height = 170.0,
+    this.weight = 70.0,
     required this.goalSteps,
     required this.calories,
     required this.distanceKm,
@@ -61,6 +66,8 @@ class StepState {
 
   StepState copyWith({
     int? currentSteps,
+    double? height,
+    double? weight,
     int? goalSteps,
     double? calories,
     double? distanceKm,
@@ -71,6 +78,8 @@ class StepState {
   }) {
     return StepState(
       currentSteps: currentSteps ?? this.currentSteps,
+      height: height ?? this.height,
+      weight: weight ?? this.weight,
       goalSteps: goalSteps ?? this.goalSteps,
       calories: calories ?? this.calories,
       distanceKm: distanceKm ?? this.distanceKm,
@@ -144,6 +153,12 @@ class StepNotifier extends Notifier<StepState> {
     final displaySteps = storage.getLastDate() == _lastProcessedDate ? storage.getSteps() : 0;
     final savedCoins = storage.getCoins();
     final savedGoal = storage.getStepGoal();
+    final savedHeight = storage.getHeight();
+    final savedWeight = storage.getWeight();
+
+    double strideLengthMeters = (savedHeight * 0.413) / 100;
+    double initialDistanceKm = (displaySteps * strideLengthMeters) / 1000;
+    double initialCalories = initialDistanceKm * savedWeight * 1.036;
 
     String weeklyData = storage.getWeeklySteps();
     List<int> loadedWeeklySteps = weeklyData.split(',').map((e) => int.tryParse(e) ?? 0).toList();
@@ -151,9 +166,11 @@ class StepNotifier extends Notifier<StepState> {
 
     return StepState(
       currentSteps: displaySteps,
+      height: savedHeight,
+      weight: savedWeight,
       goalSteps: savedGoal,
-      calories: displaySteps * 0.04,
-      distanceKm: displaySteps * 0.00075,
+      calories: initialCalories,
+      distanceKm: initialDistanceKm,
       isRestMode: false,
       coins: savedCoins,
       weeklySteps: loadedWeeklySteps,
@@ -293,6 +310,33 @@ class StepNotifier extends Notifier<StepState> {
     _processSteps(todaySteps, 'fallback');
   }
 
+
+  void updateProfile(double height, double weight) {
+    final storage = ref.read(storageProvider);
+    storage.saveHeight(height);
+    storage.saveWeight(weight);
+
+    // Recalculate based on current steps
+    double strideLengthMeters = (height * 0.413) / 100;
+    double dist = (state.currentSteps * strideLengthMeters) / 1000;
+    double cals = dist * weight * 1.036;
+
+    state = state.copyWith(
+      height: height,
+      weight: weight,
+      distanceKm: dist,
+      calories: cals,
+    );
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'height': height,
+        'weight': weight,
+      }, SetOptions(merge: true));
+    }
+  }
+
   //  It calculates everything
 
   void _processSteps(int todaySteps, String trackingStatus) {
@@ -338,10 +382,19 @@ class StepNotifier extends Notifier<StepState> {
 
     if (todaySteps - _lastSyncedSteps >= 500) _forceCloudSync();
 
+    double strideLengthMeters = (state.height * 0.413) / 100;
+
+    //  Calculate accurate distance
+    double calculatedDistanceKm = (todaySteps * strideLengthMeters) / 1000;
+
+    //  Calculate precise calories
+    double calculatedCalories = calculatedDistanceKm * state.weight * 1.036;
+
+
     state = state.copyWith(
       currentSteps: todaySteps,
-      calories: todaySteps * 0.04,
-      distanceKm: todaySteps * 0.00075,
+      calories: calculatedCalories,
+      distanceKm: calculatedDistanceKm,
       coins: currentCoins,
       pedestrianStatus: trackingStatus,
       weeklySteps: weekly,
@@ -440,6 +493,8 @@ class StepNotifier extends Notifier<StepState> {
       final storage = ref.read(storageProvider);
 
       if (data.containsKey('stepGoal')) storage.saveStepGoal(data['stepGoal']);
+      if (data.containsKey('height')) storage.saveHeight((data['height'] as num).toDouble());
+      if (data.containsKey('weight')) storage.saveWeight((data['weight'] as num).toDouble());
       if (data.containsKey('currentCoins')) storage.saveCoins(data['currentCoins']);
       if (data.containsKey('monthlyHighScore')) storage.saveMonthlyHighScore(data['monthlyHighScore']);
 
@@ -458,13 +513,21 @@ class StepNotifier extends Notifier<StepState> {
         storage.saveLastCoinStep((restoredSteps ~/ 100) * 100);
       }
 
+      final h = (data['height'] as num?)?.toDouble() ?? 170.0;
+      final w = (data['weight'] as num?)?.toDouble() ?? 70.0;
+      double strideLengthMeters = (h * 0.413) / 100;
+      double dist = (restoredSteps * strideLengthMeters) / 1000;
+      double cals = dist * w * 1.036;
+
       state = state.copyWith(
         currentSteps: restoredSteps,
         goalSteps: data['stepGoal'] ?? 10000,
+        height: h,
+        weight: w,
         coins: data['currentCoins'] ?? 0,
         weeklySteps: loadedWeekly,
-        calories: restoredSteps * 0.04,
-        distanceKm: restoredSteps * 0.00075,
+        calories: cals,
+        distanceKm: dist,
       );
       await ref.read(challengeProvider.notifier).syncWithFirestore();
     } catch (e) { debugPrint('Firebase restore failed: $e'); }

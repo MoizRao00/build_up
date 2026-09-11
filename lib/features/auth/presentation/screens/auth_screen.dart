@@ -1,4 +1,5 @@
 import 'package:build_up/features/auth/presentation/screens/sign_up_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -30,7 +31,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           textAlign: TextAlign.center,
           style: GoogleFonts.sora(
             color: isError ? Colors.white : AppColors.backgroundDark,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w500,
             fontSize: 14,
             letterSpacing: 1.2,
           ),
@@ -59,15 +60,30 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     setState(() => _isLoading = true);
     try {
       await ref.read(authControllerProvider).signIn(email, password);
-      _showCustomSnackBar('Login Successful');
-    } catch (e) {
-      String errorMessage = 'An error occurred';
-      if (e.toString().contains('user-not-found')) errorMessage = 'User not found';
-      else if (e.toString().contains('wrong-password')) errorMessage = 'Incorrect password';
-      else if (e.toString().contains('invalid-email')) errorMessage = 'Invalid email address';
-      else errorMessage = e.toString().replaceAll('Exception:', '').trim();
-
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'No account found with this email.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Incorrect password. Please try again.';
+          break;
+        case 'invalid-email':
+          errorMessage = 'The email address is not valid.';
+          break;
+        case 'user-disabled':
+          errorMessage = 'This account has been disabled.';
+          break;
+        case 'too-many-requests':
+          errorMessage = 'Too many failed attempts. Please try again later.';
+          break;
+        default:
+          errorMessage = 'Login failed. Please check your credentials.';
+      }
       _showCustomSnackBar(errorMessage, isError: true);
+    } catch (e) {
+      _showCustomSnackBar('An unexpected error occurred.', isError: true);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -79,11 +95,19 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     setState(() => _isLoading = true);
     try {
       await ref.read(authControllerProvider).signInWithGoogle();
-      _showCustomSnackBar('Google Login Successful');
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+      if (e.code == 'account-exists-with-different-credential') {
+        errorMessage = 'An account already exists with the same email.';
+      } else if (e.code == 'network-request-failed') {
+        errorMessage = 'Please check your internet connection.';
+      } else {
+        errorMessage = 'Google Sign-In failed.';
+      }
+      _showCustomSnackBar(errorMessage, isError: true);
     } catch (e) {
-      print(e.toString());
-      _showCustomSnackBar('Failed: ${e.toString()}', isError: true);
-    } finally {
+      _showCustomSnackBar('Sign-in cancelled.', isError: true);
+    }finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -94,13 +118,23 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     try {
       await ref.read(authControllerProvider).signInAnonymously();
       _showCustomSnackBar('Welcome Guest');
-    } catch (e) {
-      print(e.toString());
-      _showCustomSnackBar('Failed: ${e.toString()}', isError: true);
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+      switch (e.code) {
+        case 'operation-not-allowed':
+          errorMessage = 'Guest login is currently disabled.';
+          break;
+        case 'network-request-failed':
+          errorMessage = 'Please check your internet connection.';
+          break;
+        default:
+          errorMessage = 'Guest login failed. Please try again.';
       }
+      _showCustomSnackBar(errorMessage, isError: true);
+    } catch (e) {
+      _showCustomSnackBar('An unexpected error occurred.', isError: true);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

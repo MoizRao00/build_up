@@ -18,6 +18,21 @@ class LocalStorageService {
     return _box.get('currentSteps', defaultValue: 0);
   }
 
+  void saveHeight(double height) {
+    _box.put('height', height);
+  }
+
+  double getHeight() {
+    return _box.get('height', defaultValue: 170.0);
+  }
+
+  void saveWeight(double weight) {
+    _box.put('weight', weight);
+  }
+
+  double getWeight() {
+    return _box.get('weight', defaultValue: 70.0);
+  }
   void saveCoins(int coins) {
     _box.put('coins', coins);
   }

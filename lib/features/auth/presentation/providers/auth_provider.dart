@@ -13,7 +13,7 @@ final firestoreProvider = Provider<FirebaseFirestore>((ref) {
   return FirebaseFirestore.instance;
 });
 
-// Use a notification_provider for GoogleSignIn with correct configuration
+
 final googleSignInProvider = Provider<g_sign_in.GoogleSignIn>((ref) {
   return g_sign_in.GoogleSignIn.instance;
 });
@@ -78,18 +78,16 @@ class AuthController {
   Future<void> signInWithGoogle() async {
     try {
 
-
       final g_sign_in.GoogleSignInAccount? googleUser = await _googleSignIn.authenticate();
       if (googleUser == null) return;
 
-      final clientAuth = await googleUser.authorizationClient?.authorizeScopes(['email', 'profile']);
-      if (clientAuth == null) return;
 
       final g_sign_in.GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
+
       final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: clientAuth.accessToken,
         idToken: googleAuth.idToken,
+        accessToken: null,
       );
 
       final userCredential = await _auth.signInWithCredential(credential);
@@ -136,7 +134,7 @@ class AuthController {
 
   Future<void> signOut() async {
     await _auth.signOut();
-    await g_sign_in.GoogleSignIn.instance.signOut();
+    await _googleSignIn.signOut();
     final storage = LocalStorageService();
     await storage.init();
     await storage.clearAllUserData();
