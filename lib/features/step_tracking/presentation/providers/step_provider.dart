@@ -11,8 +11,10 @@ import '../../../../core/services/native_health_service.dart';
 import '../../../../core/services/widget_service.dart';
 import '../../../social/presentation/providers/challenge_provider.dart';
 
+// list of all  ranks users can reach based on their walking.
 enum LeagueTier { bronze, silver, gold, diamond }
 
+// color for each tier
 extension LeagueTierColor on LeagueTier {
   Color get color {
     switch (this) {
@@ -24,6 +26,7 @@ extension LeagueTierColor on LeagueTier {
   }
 }
 
+// user's step info, coins, etc class
 class StepState {
   final int currentSteps;
   final int goalSteps;
@@ -45,6 +48,7 @@ class StepState {
     this.weeklySteps = const [0, 0, 0, 0, 0, 0, 0],
   });
 
+  // Converting steps into active Distance
   String get activeDuration {
     final totalMinutes = currentSteps ~/ 100;
     if (totalMinutes < 60) return '$totalMinutes min';
@@ -52,6 +56,8 @@ class StepState {
     final minutes = totalMinutes % 60;
     return '$hours:${minutes.toString().padLeft(2, '0')}';
   }
+
+  // state update without changing the original data.
 
   StepState copyWith({
     int? currentSteps,
@@ -75,8 +81,10 @@ class StepState {
     );
   }
 
+  // calculates league by average steps this week.
   LeagueTier get currentLeague {
     int activeDays = DateTime.now().weekday;
+
     int totalWeeklySteps = weeklySteps.sublist(0, activeDays).fold(0, (sum, item) => sum + item);
     int averageSteps = totalWeeklySteps ~/ activeDays;
 
@@ -86,6 +94,7 @@ class StepState {
     return LeagueTier.bronze;
   }
 
+  // name current tier.
   String get tierName {
     switch (currentLeague) {
       case LeagueTier.diamond: return 'Diamond Tier';
@@ -96,25 +105,33 @@ class StepState {
   }
 }
 
+
 final storageProvider = Provider<LocalStorageService>((ref) => LocalStorageService());
 final widgetServiceProvider = Provider<WidgetService>((ref) => WidgetService());
 final stepNotifierProvider = NotifierProvider<StepNotifier, StepState>(StepNotifier.new);
 
 final Health _health = Health();
 
+// brain of the whole step tracker It handles all the logic for counting and saving.
+
 class StepNotifier extends Notifier<StepState> {
   Timer? _pollingTimer;
+
   AppLifecycleListener? _lifecycleListener;
   int _lastSyncedSteps = 0;
   String? _lastProcessedDate;
 
+  //  runs on app start up , loads saved data
+
   @override
   StepState build() {
+
     _lifecycleListener = AppLifecycleListener(
       onPause: _forceCloudSync,
       onInactive: _forceCloudSync,
       onDetach: _forceCloudSync,
     );
+
     ref.onDispose(() {
       _pollingTimer?.cancel();
       _lifecycleListener?.dispose();
@@ -142,6 +159,7 @@ class StepNotifier extends Notifier<StepState> {
       weeklySteps: loadedWeeklySteps,
     );
   }
+
 
   void addCoins(int amount) {
     final storage = ref.read(storageProvider);
@@ -173,6 +191,8 @@ class StepNotifier extends Notifier<StepState> {
     }
   }
 
+  // Pushes all data to cloud right now if their is new data
+
   void _forceCloudSync() {
     if (state.currentSteps > _lastSyncedSteps) {
       _syncCompleteProfileToFirestore(
@@ -185,6 +205,8 @@ class StepNotifier extends Notifier<StepState> {
       _lastSyncedSteps = state.currentSteps;
     }
   }
+
+  // Every morning resets everything back
 
   void _handleDailyResetIfNeeded({int? hardwareSteps}) {
     final storage = ref.read(storageProvider);
@@ -205,6 +227,8 @@ class StepNotifier extends Notifier<StepState> {
       storage.saveWeeklySteps(weekly.join(','));
     }
   }
+
+  //sets up connection to sensors to ask permission first.
 
   Future initializeTracking() async {
     _health.configure();
@@ -233,6 +257,8 @@ class StepNotifier extends Notifier<StepState> {
     }
   }
 
+  // step count from OS Health or Apple Health
+
   Future<void> _fetchHealthData() async {
     try {
       _handleDailyResetIfNeeded();
@@ -242,6 +268,8 @@ class StepNotifier extends Notifier<StepState> {
       _processSteps(steps ?? 0, 'tracking');
     } catch (e) { await _fetchFallbackData(); }
   }
+
+  // If the health sensors fail, we use this backup way to count steps directly from the phone.
 
   Future<void> _fetchFallbackData() async {
     final nativeHealth = ref.read(nativeHealthProvider);
@@ -265,7 +293,10 @@ class StepNotifier extends Notifier<StepState> {
     _processSteps(todaySteps, 'fallback');
   }
 
+  //  It calculates everything
+
   void _processSteps(int todaySteps, String trackingStatus) {
+
     final storage = ref.read(storageProvider);
     final now = DateTime.now();
     final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -319,6 +350,7 @@ class StepNotifier extends Notifier<StepState> {
     ref.read(widgetServiceProvider).updateWidgetData(todaySteps, state.goalSteps);
   }
 
+  //  check if  user broke  personal record of month right here.
   void _updateLeaderboardScore(int todaySteps) {
     final storage = ref.read(storageProvider);
     final now = DateTime.now();
@@ -333,6 +365,8 @@ class StepNotifier extends Notifier<StepState> {
     }
   }
 
+  // Tells Firestore what the user's best score is so their friends can see it.
+
   void _syncHighScoreToFirestore(int score) {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -343,6 +377,8 @@ class StepNotifier extends Notifier<StepState> {
       });
     }
   }
+
+  // sync that sends everything Firebase
 
   void _syncCompleteProfileToFirestore(int todaySteps, double calories, double distance, int coins, List<int> weekly) {
     final user = FirebaseAuth.instance.currentUser;
@@ -361,6 +397,7 @@ class StepNotifier extends Notifier<StepState> {
     }
   }
 
+  // goal update
   void updateGoal(int newGoal) {
     ref.read(storageProvider).saveStepGoal(newGoal);
     state = state.copyWith(goalSteps: newGoal);
@@ -373,6 +410,8 @@ class StepNotifier extends Notifier<StepState> {
       }, SetOptions(merge: true));
     }
   }
+
+  // force refresh
 
   Future<void> forceRefresh() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -388,6 +427,8 @@ class StepNotifier extends Notifier<StepState> {
     }
     await initializeTracking();
   }
+
+  // After user logs in restore data from firebase
 
   Future<void> restoreDataFromFirebase() async {
     final user = FirebaseAuth.instance.currentUser;
