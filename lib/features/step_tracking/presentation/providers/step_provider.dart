@@ -235,7 +235,8 @@ class StepNotifier extends Notifier<StepState> {
       storage.saveSteps(0);
       storage.saveLastCoinStep(0);
       storage.saveGoalNotified(false);
-      if (hardwareSteps != null) storage.saveHardwareBaseline(hardwareSteps);
+
+      storage.saveHardwareBaseline(0);
 
       String weeklyData = storage.getWeeklySteps();
       List<int> weekly = weeklyData.split(',').map((e) => int.tryParse(e) ?? 0).toList();
@@ -243,35 +244,66 @@ class StepNotifier extends Notifier<StepState> {
       weekly[now.weekday - 1] = 0;
       storage.saveWeeklySteps(weekly.join(','));
     }
+    // This is for older phones that poll slowly
+    if (hardwareSteps != null && hardwareSteps > 0) {
+      if (storage.getHardwareBaseline() == 0 || storage.getSteps() == 0) {
+        storage.saveHardwareBaseline(hardwareSteps);
+      }
+    }
   }
 
   //sets up connection to sensors to ask permission first.
 
   Future initializeTracking() async {
-    _health.configure();
+
+    final storage = ref.read(storageProvider);
+
+    // 1. If we already know Health isn't supported, go straight to hardware
+    if (!storage.getHealthSupported()) {
+      await _setupFallbackTracking();
+      return;
+    }
     final types = [HealthDataType.STEPS];
     final activityStatus = await Permission.activityRecognition.request();
+
     if (!activityStatus.isGranted) {
       state = state.copyWith(pedestrianStatus: 'Permission Denied');
       return;
     }
-    bool hasPermissions = await _health.hasPermissions(types) ?? false;
+  bool hasPermissions = false;
+  try {
+    _health.configure();
+    hasPermissions = await _health.hasPermissions(types) ?? false;
     if (!hasPermissions) {
-      try { hasPermissions = await _health.requestAuthorization(types); } catch (e) { hasPermissions = false; }
+        hasPermissions = await _health.requestAuthorization(types);
     }
+  } catch (e) {
+    debugPrint('Health Connect not supported, falling back: $e');
+    storage.saveHealthSupported(false);
+    hasPermissions = false;
+  }
     if (hasPermissions) {
       await _fetchHealthData();
       _pollingTimer?.cancel();
       _pollingTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
         if (!state.isRestMode) _fetchHealthData();
       });
-    } else {
-      await _fetchFallbackData();
-      _pollingTimer?.cancel();
-      _pollingTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
-        if (!state.isRestMode) _fetchFallbackData();
-      });
+    }  else {
+      // 3. If permissions failed or service is missing, switch to hardware
+      storage.saveHealthSupported(false);
+      await _setupFallbackTracking();
     }
+    if (await Permission.ignoreBatteryOptimizations.isDenied) {
+      await Permission.ignoreBatteryOptimizations.request();
+    }
+  }
+
+  Future<void> _setupFallbackTracking() async {
+    await _fetchFallbackData();
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
+      if (!state.isRestMode) _fetchFallbackData();
+    });
   }
 
   // step count from OS Health or Apple Health
@@ -291,8 +323,20 @@ class StepNotifier extends Notifier<StepState> {
   Future<void> _fetchFallbackData() async {
     final nativeHealth = ref.read(nativeHealthProvider);
     final hardwareSteps = await nativeHealth.getHardwareSteps();
-    if (hardwareSteps == 0) return;
+
+    if (hardwareSteps == -1) {
+      state = state.copyWith(pedestrianStatus: 'No Sensor Detected');
+      return;
+    }
+
     _handleDailyResetIfNeeded(hardwareSteps: hardwareSteps);
+
+    if (state.pedestrianStatus != 'fallback') {
+      state = state.copyWith(pedestrianStatus: 'fallback');
+    }
+
+    if (hardwareSteps == 0) return;
+
     final storage = ref.read(storageProvider);
     int baseline = storage.getHardwareBaseline();
     if (baseline > 0 && hardwareSteps < baseline) {

@@ -149,6 +149,15 @@ class LocalStorageService {
   int getStepGoal() {
     return _box.get('stepGoal', defaultValue: 10000);
   }
+
+  bool getHealthSupported() {
+    return _box.get('healthSupported', defaultValue: true);
+  }
+
+  void saveHealthSupported(bool supported) {
+    _box.put('healthSupported', supported);
+  }
+
   Future<void> clearAllUserData() async {
     await _box.clear();
   }

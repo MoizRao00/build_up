@@ -34,7 +34,7 @@ class MainActivity: FlutterFragmentActivity() {
         val stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
         if (stepSensor == null) {
-            result.success(0)
+            result.success(-1)
             return
         }
 
@@ -60,7 +60,7 @@ class MainActivity: FlutterFragmentActivity() {
                 sensorManager.unregisterListener(listener)
                 result.success(0)
             }
-        }, 2000)
+        }, 4000)
 
         sensorManager.registerListener(listener, stepSensor, SensorManager.SENSOR_DELAY_FASTEST)
     }
